@@ -18,24 +18,26 @@ export type ProfileCategory =
 export interface CategoryMeta {
   emoji: string;
   plural: string;
+  color: string;
+  icon: string;
 }
 
 export const CATEGORY_META: Record<ProfileCategory, CategoryMeta> = {
-  Gym:          { emoji: '💪', plural: 'Gym Bros' },
-  Gamer:        { emoji: '🎮', plural: 'Gamers' },
-  Tradie:       { emoji: '🔧', plural: 'Tradies' },
-  Teacher:      { emoji: '📚', plural: 'Teachers' },
-  Nurse:        { emoji: '💉', plural: 'Nurses' },
-  Influencer:   { emoji: '📸', plural: 'Influencers' },
-  Entrepreneur: { emoji: '🚀', plural: 'Entrepreneurs' },
-  FIFO:         { emoji: '⛏️', plural: 'FIFO Workers' },
-  Traveller:    { emoji: '✈️', plural: 'Travellers' },
-  Spiritual:    { emoji: '🔮', plural: 'Spiritual Types' },
-  Fitness:      { emoji: '🏃', plural: 'Fitness Fanatics' },
-  Creative:     { emoji: '🎨', plural: 'Creatives' },
-  Corporate:    { emoji: '💼', plural: 'Corporate Types' },
-  Crypto:       { emoji: '🪙', plural: 'Crypto Bros' },
-  Outdoors:     { emoji: '🌿', plural: 'Outdoorsy Types' },
+  Gym:          { emoji: '💪', plural: 'Gym Bros',         color: '#DC2626', icon: '🏋️' },
+  Gamer:        { emoji: '🎮', plural: 'Gamers',           color: '#6366F1', icon: '🎮' },
+  Tradie:       { emoji: '🔧', plural: 'Tradies',          color: '#B45309', icon: '🔨' },
+  Teacher:      { emoji: '📚', plural: 'Teachers',         color: '#059669', icon: '📚' },
+  Nurse:        { emoji: '💉', plural: 'Nurses',           color: '#E11D48', icon: '🚑' },
+  Influencer:   { emoji: '📸', plural: 'Influencers',      color: '#A855F7', icon: '📸' },
+  Entrepreneur: { emoji: '🚀', plural: 'Entrepreneurs',    color: '#F59E0B', icon: '🚀' },
+  FIFO:         { emoji: '⛏️', plural: 'FIFO Workers',     color: '#475569', icon: '⛏️' },
+  Traveller:    { emoji: '✈️', plural: 'Travellers',       color: '#0284C7', icon: '✈️' },
+  Spiritual:    { emoji: '🔮', plural: 'Spiritual Types',  color: '#7C3AED', icon: '🔮' },
+  Fitness:      { emoji: '🏃', plural: 'Fitness Fanatics', color: '#65A30D', icon: '🏃' },
+  Creative:     { emoji: '🎨', plural: 'Creatives',        color: '#EA580C', icon: '🎨' },
+  Corporate:    { emoji: '💼', plural: 'Corporate Types',  color: '#2563EB', icon: '💼' },
+  Crypto:       { emoji: '🪙', plural: 'Crypto Bros',      color: '#D97706', icon: '₿' },
+  Outdoors:     { emoji: '🌿', plural: 'Outdoorsy Types',  color: '#16A34A', icon: '🐴' },
 };
 
 // Gym (6): obsessed with the gym as primary identity

@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSequence,
+  withSpring,
   withTiming,
 } from 'react-native-reanimated';
 
@@ -14,7 +15,7 @@ import { allProfiles, type Profile } from '@/data/profiles';
 import { profileCategories } from '@/data/profile-categories';
 
 const GAME_SIZE = 20;
-const STACK_OFFSET = 14; // px the stack card peeks below the active card
+const STACK_OFFSET = 12;
 
 function getComboMultiplier(streak: number): number {
   if (streak >= 5) return 2;
@@ -60,7 +61,7 @@ export default function SwipeGameScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
-  // Full-screen color flash on swipe
+  // ── Full-screen flash on swipe ────────────────────────────────────────────
   const flashOpacity = useSharedValue(0);
   const flashIsSuccess = useSharedValue(true);
   const flashStyle = useAnimatedStyle(() => ({
@@ -78,6 +79,13 @@ export default function SwipeGameScreen() {
     );
   }
 
+  // ── Button press animations ────────────────────────────────────────────────
+  const passScale = useSharedValue(1);
+  const dateScale = useSharedValue(1);
+  const passBtnStyle = useAnimatedStyle(() => ({ transform: [{ scale: passScale.value }] }));
+  const dateBtnStyle = useAnimatedStyle(() => ({ transform: [{ scale: dateScale.value }] }));
+
+  // ── Game state ────────────────────────────────────────────────────────────
   const [state, setState] = useState<GameState>(() => ({
     profiles: shuffle(allProfiles).slice(0, GAME_SIZE),
     index: 0,
@@ -195,12 +203,11 @@ export default function SwipeGameScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Flash overlay — full screen, sits above everything, no pointer events */}
+      {/* Flash overlay */}
       <Animated.View style={[styles.flashOverlay, flashStyle]} pointerEvents="none" />
 
-      {/* ── Header ────────────────────────────────────────────────────────── */}
+      {/* ── Header ──────────────────────────────────────────────────────────── */}
       <View style={[styles.header, { paddingTop: headerPaddingTop }]}>
-        {/* Row 1: round count + streak + score */}
         <View style={styles.headerRow}>
           <Text style={styles.progressNum}>{progress} / {GAME_SIZE}</Text>
 
@@ -221,24 +228,21 @@ export default function SwipeGameScreen() {
           </View>
         </View>
 
-        {/* Row 2: progress bar */}
         <View style={styles.progressBarOuter}>
           <View style={[styles.progressBarInner, { width: `${progressPct}%` as `${number}%` }]} />
         </View>
       </View>
 
-      {/* ── Swiping phase ─────────────────────────────────────────────────── */}
+      {/* ── Swiping phase ───────────────────────────────────────────────────── */}
       {state.phase === 'swiping' && (
         <View style={styles.gameArea}>
           {/* Card stack */}
           <View style={styles.cardStack}>
-            {/* Background card — peeks STACK_OFFSET px below active card */}
             {nextProfile && (
               <View style={styles.stackCard} pointerEvents="none">
                 <ProfileCardStatic profile={nextProfile} />
               </View>
             )}
-            {/* Active card */}
             <View style={styles.activeCard}>
               <SwipeCard
                 key={profile.id}
@@ -249,31 +253,42 @@ export default function SwipeGameScreen() {
             </View>
           </View>
 
-          {/* Action buttons */}
+          {/* ── Action buttons ─────────────────────────────────────────────── */}
           <View style={styles.actions}>
-            <TouchableOpacity
-              style={[styles.actionBtn, styles.rejectBtn]}
-              onPress={handleSwipeLeft}
-              activeOpacity={0.75}>
-              <Text style={styles.actionIcon}>❌</Text>
-              <Text style={styles.rejectLabel}>REJECT</Text>
-            </TouchableOpacity>
+            {/* PASS button */}
+            <View style={styles.actionGroup}>
+              <Pressable
+                onPressIn={() => { passScale.value = withTiming(0.86, { duration: 75 }); }}
+                onPressOut={() => { passScale.value = withSpring(1, { damping: 9, stiffness: 200 }); }}
+                onPress={handleSwipeLeft}
+                hitSlop={14}>
+                <Animated.View style={[styles.actionBtn, styles.passBtn, passBtnStyle]}>
+                  <Text style={styles.passIcon}>✕</Text>
+                </Animated.View>
+              </Pressable>
+              <Text style={styles.passLabel}>PASS</Text>
+            </View>
 
-            <TouchableOpacity
-              style={[styles.actionBtn, styles.dateBtn]}
-              onPress={handleSwipeRight}
-              activeOpacity={0.75}>
-              <Text style={styles.actionIcon}>💚</Text>
+            {/* DATE button */}
+            <View style={styles.actionGroup}>
+              <Pressable
+                onPressIn={() => { dateScale.value = withTiming(0.86, { duration: 75 }); }}
+                onPressOut={() => { dateScale.value = withSpring(1, { damping: 9, stiffness: 200 }); }}
+                onPress={handleSwipeRight}
+                hitSlop={14}>
+                <Animated.View style={[styles.actionBtn, styles.dateBtn, dateBtnStyle]}>
+                  <Text style={styles.dateIcon}>♥</Text>
+                </Animated.View>
+              </Pressable>
               <Text style={styles.dateLabel}>DATE</Text>
-            </TouchableOpacity>
+            </View>
           </View>
 
-          <Text style={styles.swipeHint}>← swipe to reject · swipe to date →</Text>
           <View style={{ height: bottomPadding }} />
         </View>
       )}
 
-      {/* ── Reveal phase ──────────────────────────────────────────────────── */}
+      {/* ── Reveal phase ────────────────────────────────────────────────────── */}
       {state.phase === 'reveal' && (
         <ScrollView
           style={styles.revealScroll}
@@ -281,11 +296,9 @@ export default function SwipeGameScreen() {
           showsVerticalScrollIndicator={false}>
 
           <View style={[styles.revealCard, state.wasCorrect ? styles.revealCorrect : styles.revealWrong]}>
-            {/* Result emoji + title */}
             <Text style={styles.revealEmoji}>{state.wasCorrect ? '✅' : '❌'}</Text>
             <Text style={styles.revealTitle}>{getRevealTitle()}</Text>
 
-            {/* Points + optional combo tag */}
             <View style={styles.pointsRow}>
               <View style={[styles.pointsBadge, state.wasCorrect ? styles.pointsBadgeGreen : styles.pointsBadgeRed]}>
                 <Text style={[styles.pointsText, state.wasCorrect ? styles.pointsGreen : styles.pointsRed]}>
@@ -299,12 +312,10 @@ export default function SwipeGameScreen() {
               )}
             </View>
 
-            {/* Why this was the right call */}
             <View style={styles.reasonCard}>
               <Text style={styles.reasonText}>{profile.decisionReason}</Text>
             </View>
 
-            {/* Green flags */}
             {profile.greenFlags.length > 0 && (
               <View style={[styles.flagsCard, styles.flagsCardGreen]}>
                 <Text style={[styles.flagsTitle, styles.flagsTitleGreen]}>✅ Green Flags</Text>
@@ -317,7 +328,6 @@ export default function SwipeGameScreen() {
               </View>
             )}
 
-            {/* Red flags */}
             {profile.redFlags.length > 0 && (
               <View style={[styles.flagsCard, styles.flagsCardRed]}>
                 <Text style={[styles.flagsTitle, styles.flagsTitleRed]}>🚩 Red Flags</Text>
@@ -330,7 +340,6 @@ export default function SwipeGameScreen() {
               </View>
             )}
 
-            {/* Next button */}
             <TouchableOpacity style={styles.nextBtn} onPress={handleNext} activeOpacity={0.8}>
               <Text style={styles.nextBtnText}>
                 {state.index >= GAME_SIZE - 1 ? 'See Results 🎉' : 'Next Profile →'}
@@ -371,7 +380,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   progressNum: {
-    color: '#777',
+    color: '#666',
     fontSize: 14,
     fontWeight: '700',
     letterSpacing: 0.5,
@@ -388,9 +397,7 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     gap: 3,
   },
-  streakFire: {
-    fontSize: 13,
-  },
+  streakFire: { fontSize: 13 },
   streakCount: {
     color: '#ff9800',
     fontSize: 14,
@@ -434,11 +441,11 @@ const styles = StyleSheet.create({
     borderRadius: 2,
   },
 
-  // ── Game area (swiping phase) ───────────────────────────────────────────────
+  // ── Game area ───────────────────────────────────────────────────────────────
   gameArea: {
     flex: 1,
     paddingHorizontal: 16,
-    gap: 18,
+    gap: 12,
   },
 
   // Card stack
@@ -451,8 +458,8 @@ const styles = StyleSheet.create({
     top: STACK_OFFSET,
     left: 10,
     right: 10,
-    opacity: 0.4,
-    transform: [{ scale: 0.965 }],
+    opacity: 0.35,
+    transform: [{ scale: 0.97 }],
   },
   activeCard: {
     position: 'absolute',
@@ -461,65 +468,79 @@ const styles = StyleSheet.create({
     right: 0,
   },
 
-  // Action buttons
+  // ── Action buttons ──────────────────────────────────────────────────────────
   actions: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 32,
+    alignItems: 'flex-start',
+    gap: 48,
+  },
+  actionGroup: {
+    alignItems: 'center',
+    gap: 8,
   },
   actionBtn: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 90,
+    height: 90,
+    borderRadius: 45,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
-    gap: 3,
+    borderWidth: 2.5,
   },
-  rejectBtn: {
-    backgroundColor: '#160404',
-    borderColor: '#cc2244',
-    shadowColor: '#ff4d6d',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.45,
-    shadowRadius: 12,
-    elevation: 8,
+  passBtn: {
+    backgroundColor: '#170408',
+    borderColor: '#c41430',
+    shadowColor: '#ff2244',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.55,
+    shadowRadius: 18,
+    elevation: 14,
   },
   dateBtn: {
-    backgroundColor: '#041606',
-    borderColor: '#2d8a2d',
-    shadowColor: '#4caf50',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.45,
-    shadowRadius: 12,
-    elevation: 8,
+    backgroundColor: '#04120a',
+    borderColor: '#1e8038',
+    shadowColor: '#33cc55',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.55,
+    shadowRadius: 18,
+    elevation: 14,
   },
-  actionIcon: {
-    fontSize: 26,
+  passIcon: {
+    color: '#f02040',
+    fontSize: 30,
+    fontWeight: '900',
+    lineHeight: 34,
+    includeFontPadding: false,
   },
-  rejectLabel: {
-    color: '#cc2244',
-    fontSize: 9,
+  dateIcon: {
+    color: '#22cc44',
+    fontSize: 30,
+    fontWeight: '900',
+    lineHeight: 34,
+    includeFontPadding: false,
+  },
+  passLabel: {
+    color: '#c41430',
+    fontSize: 10,
     fontWeight: '800',
-    letterSpacing: 1.2,
+    letterSpacing: 2,
   },
   dateLabel: {
-    color: '#2d8a2d',
-    fontSize: 9,
+    color: '#1e8038',
+    fontSize: 10,
     fontWeight: '800',
-    letterSpacing: 1.2,
+    letterSpacing: 2,
   },
   swipeHint: {
-    color: '#333',
-    fontSize: 12,
+    color: '#2e2e2e',
+    fontSize: 11,
     textAlign: 'center',
-    letterSpacing: 0.3,
+    letterSpacing: 0.4,
+    marginTop: -8,
   },
 
   // ── Reveal phase ────────────────────────────────────────────────────────────
-  revealScroll: {
-    flex: 1,
-  },
+  revealScroll: { flex: 1 },
   revealContent: {
     paddingHorizontal: 16,
     paddingTop: 8,
@@ -540,9 +561,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#140707',
     borderColor: '#6a2d2d',
   },
-  revealEmoji: {
-    fontSize: 52,
-  },
+  revealEmoji: { fontSize: 52 },
   revealTitle: {
     color: '#fff',
     fontSize: 21,
@@ -576,12 +595,8 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 0.3,
   },
-  pointsGreen: {
-    color: '#4caf50',
-  },
-  pointsRed: {
-    color: '#ff4d6d',
-  },
+  pointsGreen: { color: '#4caf50' },
+  pointsRed: { color: '#ff4d6d' },
   comboBadge: {
     backgroundColor: '#1f1200',
     borderRadius: 10,
@@ -632,12 +647,8 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     marginBottom: 4,
   },
-  flagsTitleGreen: {
-    color: '#4caf50',
-  },
-  flagsTitleRed: {
-    color: '#ff4d6d',
-  },
+  flagsTitleGreen: { color: '#4caf50' },
+  flagsTitleRed: { color: '#ff4d6d' },
   flagRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
