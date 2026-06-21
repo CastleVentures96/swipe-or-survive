@@ -18,19 +18,24 @@ import { profileCategories, CATEGORY_META } from '@/data/profile-categories';
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const SWIPE_THRESHOLD = 80;
 
-// Shorter card — content fills it rather than flex-stretching into empty space.
-// The header (gradient zone) takes ~54% and bio takes the rest.
-export const CARD_HEIGHT = Math.min(400, Math.max(280, Math.round(SCREEN_HEIGHT - 380)));
+// Portrait card — narrow and tall so it reads as a person's profile, not a form.
+// Side gutters (24px each) keep the card centred with dark background visible.
+export const CARD_WIDTH  = Math.min(360, SCREEN_WIDTH - 48);
 
-// Avatar adapts to card height so small screens (iPhone SE) still work.
-// On a typical iPhone 14 (CARD_HEIGHT=400) this is ~168px = 30% larger than previous 130px.
-const AVATAR_SIZE = Math.min(168, Math.round(CARD_HEIGHT * 0.42));
-const RING_SIZE = AVATAR_SIZE + 8; // 4px breathing gap inside the ring each side
-const AVATAR_FONT = Math.min(54, Math.round(AVATAR_SIZE * 0.32));
-const HEADER_PAD = 20; // equal top/bottom — centres avatar vertically in gradient zone
+// Height fills as much of the game area as possible while leaving room for
+// HUD header (~110px), gap (8px), action buttons (~95px), safe area (~38px).
+export const CARD_HEIGHT = Math.min(660, Math.max(460, Math.round(SCREEN_HEIGHT - 260)));
 
-// Chips are hidden on very short cards (< 340px) to prevent bio being crushed to 1-2 lines
-const SHOW_CHIPS = CARD_HEIGHT >= 340;
+// Card background — clearly distinct from the app's #0a0a0a canvas.
+const CARD_BG = '#111319';
+
+// Fixed avatar size; top gradient zone height scales with the card.
+const AVATAR_SIZE = 96;
+const RING_SIZE   = AVATAR_SIZE + 8;
+const TOP_ZONE_H  = Math.round(CARD_HEIGHT * 0.36);
+
+// Secondary personality chip only renders on cards tall enough to spare the space.
+const SHOW_CHIP = CARD_HEIGHT >= 500;
 
 function getInitials(name: string): string {
   const parts = name.trim().split(/\s+/);
@@ -38,40 +43,40 @@ function getInitials(name: string): string {
   return parts[0].slice(0, 2).toUpperCase();
 }
 
-// Personality chips shown inside the info column — no separate row needed
-const CATEGORY_CHIPS: Record<string, [string, string]> = {
-  Gym:          ['🏋️ Gym Rat',       '🥗 Meal Prepper'],
-  Gamer:        ['🎮 Main Character', '🌙 Night Owl'],
-  Tradie:       ['🔨 Tradie Life',    '🍺 TGIF Energy'],
-  Teacher:      ['📚 Educator',       '☕ Coffee First'],
-  Nurse:        ['🚑 Frontline',      '💉 Night Shift'],
-  Influencer:   ['📸 Content Life',   '✨ The Aesthetic'],
-  Entrepreneur: ['🚀 Big Ideas',      '📊 Always On'],
-  FIFO:         ['⛏️ Fly-In',         '📱 Long Distance'],
-  Traveller:    ['✈️ Wanderer',       '🌏 Passport Ready'],
-  Spiritual:    ['🔮 Woo Woo',        '🌙 Moon Child'],
-  Fitness:      ['🏃 Health Nerd',    '🥑 Clean Eating'],
-  Creative:     ['🎨 Creative Type',  '🎵 Artsy Soul'],
-  Corporate:    ['💼 Corporate',      '📅 Fully Booked'],
-  Crypto:       ['₿ Crypto Brain',    '📉 HODL Life'],
-  Outdoors:     ['🐴 Outdoors',       '🌿 Nature First'],
+const CATEGORY_CHIP: Record<string, string> = {
+  Gym:          '🏋️ Gym Rat',
+  Gamer:        '🎮 Gamer',
+  Tradie:       '🔨 Tradie Life',
+  Teacher:      '📚 Educator',
+  Nurse:        '🚑 Frontline',
+  Influencer:   '📸 Content Creator',
+  Entrepreneur: '🚀 Self-Made',
+  FIFO:         '⛏️ Fly-In Fly-Out',
+  Traveller:    '✈️ Digital Nomad',
+  Spiritual:    '🔮 Spiritual',
+  Fitness:      '🏃 Fitness First',
+  Creative:     '🎨 Creative',
+  Corporate:    '💼 Corporate',
+  Crypto:       '₿ Crypto Bro',
+  Outdoors:     '🐴 Outdoors',
 };
 
 // ── Avatar ────────────────────────────────────────────────────────────────────
 
 function ProfileAvatar({ initials, accentColor }: { initials: string; accentColor: string }) {
-  const scale = useSharedValue(0.76);
+  const scale = useSharedValue(0.72);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { scale.value = withSpring(1, { damping: 11, stiffness: 135 }); }, []);
+  useEffect(() => { scale.value = withSpring(1, { damping: 10, stiffness: 120 }); }, []);
   const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
 
   return (
     <Animated.View style={animStyle}>
-      <View style={[styles.avatarRing, { borderColor: 'rgba(255,255,255,0.36)' }]}>
-        <View style={[styles.avatarCircle, { backgroundColor: accentColor }]}>
-          {/* Dark overlay keeps initials readable against the same-colour gradient */}
-          <View style={styles.avatarDark} />
-          <Text style={[styles.avatarInitials, { fontSize: AVATAR_FONT }]}>{initials}</Text>
+      <View style={[styles.avatarRing, { borderColor: 'rgba(255,255,255,0.32)' }]}>
+        <View style={[styles.avatarRingInner, { borderColor: `${accentColor}99` }]}>
+          <View style={[styles.avatarCircle, { backgroundColor: accentColor }]}>
+            <View style={styles.avatarDark} />
+            <Text style={styles.avatarInitials}>{initials}</Text>
+          </View>
         </View>
       </View>
     </Animated.View>
@@ -82,93 +87,79 @@ function ProfileAvatar({ initials, accentColor }: { initials: string; accentColo
 
 function CardContent({ profile }: { profile: Profile }) {
   const category = profileCategories[profile.id];
-  const meta    = category ? CATEGORY_META[category] : null;
-  const accent  = meta?.color ?? '#4B5563';
-  const icon    = meta?.icon  ?? '•';
-  const chips   = CATEGORY_CHIPS[category ?? ''] ?? ['• Profile', '• Interesting'];
+  const meta     = category ? CATEGORY_META[category] : null;
+  const accent   = meta?.color ?? '#4B5563';
+  const icon     = meta?.icon  ?? '•';
+  const chip     = CATEGORY_CHIP[category ?? ''];
   const initials = getInitials(profile.name);
 
-  // Fade the whole card in on each new profile
   const opacity = useSharedValue(0);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { opacity.value = withTiming(1, { duration: 180 }); }, []);
+  useEffect(() => { opacity.value = withTiming(1, { duration: 220 }); }, []);
   const fadeStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
 
   return (
     <Animated.View style={[styles.content, fadeStyle]}>
 
-      {/* Category gradient — covers the header zone precisely (RING_SIZE + 2×HEADER_PAD) */}
-      <LinearGradient
-        colors={[accent, `${accent}CC`, `${accent}2E`, 'transparent']}
-        locations={[0, 0.28, 0.65, 1]}
-        style={styles.headerGradient}
-        pointerEvents="none"
-      />
-
-      {/* ── Header row ──────────────────────────────────────────────────────
-          Avatar LEFT — 30% larger than before.
-          Info column RIGHT — dense: name, category pill, tags, job, location.
-          Equal paddingVertical centres avatar within the gradient zone.
-      ──────────────────────────────────────────────────────────────────── */}
-      <View style={styles.header}>
-
+      {/* ── Top gradient zone — accent colour fades into card background ──────
+          This gives each archetype a distinct colour identity without photos.
+          The gradient ends at CARD_BG so there is no visible seam below.
+      ───────────────────────────────────────────────────────────────────── */}
+      <View style={styles.topZone}>
+        <LinearGradient
+          colors={[accent, `${accent}DD`, `${accent}55`, CARD_BG]}
+          locations={[0, 0.38, 0.72, 1]}
+          style={StyleSheet.absoluteFill}
+          pointerEvents="none"
+        />
         <ProfileAvatar initials={initials} accentColor={accent} />
-
-        <View style={styles.infoStack}>
-
-          {/* Name + age — biggest text on the card */}
-          <View style={styles.nameRow}>
-            <Text
-              style={styles.name}
-              numberOfLines={1}
-              adjustsFontSizeToFit
-              minimumFontScale={0.68}>
-              {profile.name}
-            </Text>
-            <Text style={styles.age}>{profile.age}</Text>
-          </View>
-
-          {/* Category pill — immediate identity signal */}
-          <View style={[styles.catPill, { backgroundColor: `${accent}BF`, borderColor: 'rgba(255,255,255,0.20)' }]}>
-            <Text style={styles.catPillText}>{icon}  {category ?? '—'}</Text>
-          </View>
-
-          {/* Personality chips — only shown when card is tall enough */}
-          {SHOW_CHIPS && (
-            <View style={styles.chipsRow}>
-              {chips.map((chip, i) => (
-                <View key={i} style={[styles.chip, { backgroundColor: `${accent}1C`, borderColor: `${accent}55` }]}>
-                  <Text style={styles.chipText}>{chip}</Text>
-                </View>
-              ))}
-            </View>
-          )}
-
-          {/* Job — coloured to tie back to accent */}
-          <Text style={[styles.job, { color: `${accent}FF` }]} numberOfLines={1}>
-            {profile.occupation}
-          </Text>
-
-          {/* Location */}
-          <View style={styles.locRow}>
-            <Text style={styles.locPin}>📍</Text>
-            <Text style={styles.locText} numberOfLines={1}>{profile.suburb}</Text>
-          </View>
-
-        </View>
       </View>
 
-      {/* ── Divider ─────────────────────────────────────────────────────────── */}
+      {/* ── Name + Age ───────────────────────────────────────────────────────── */}
+      <View style={styles.nameRow}>
+        <Text style={styles.name} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.72}>
+          {profile.name}
+        </Text>
+        <Text style={styles.nameSep}>,</Text>
+        <Text style={styles.nameAge}> {profile.age}</Text>
+      </View>
+
+      {/* ── Job ──────────────────────────────────────────────────────────────── */}
+      <Text style={[styles.job, { color: accent }]} numberOfLines={1}>
+        {profile.occupation}
+      </Text>
+
+      {/* ── Location ─────────────────────────────────────────────────────────── */}
+      <Text style={styles.location} numberOfLines={1}>
+        📍  {profile.suburb}
+      </Text>
+
+      {/* ── Category tags ────────────────────────────────────────────────────── */}
+      <View style={styles.tagsRow}>
+        <View style={[styles.tag, { backgroundColor: `${accent}22`, borderColor: `${accent}66` }]}>
+          <Text style={[styles.tagText, { color: accent }]}>{icon}  {category}</Text>
+        </View>
+        {SHOW_CHIP && chip ? (
+          <View style={styles.tagNeutral}>
+            <Text style={styles.tagNeutralText}>{chip}</Text>
+          </View>
+        ) : null}
+      </View>
+
+      {/* Divider */}
       <View style={styles.divider} />
 
-      {/* ── Bio — larger font, fills all remaining space ─────────────────────
-          No numberOfLines limit: content fills the flex:1 region naturally.
-          Short bios show the watermark in the space below.
-      ──────────────────────────────────────────────────────────────────── */}
+      {/* ── Bio — occupies most of the remaining card height ──────────────────
+          flex: 1 ensures it fills whatever space the fixed elements leave.
+      ───────────────────────────────────────────────────────────────────── */}
       <View style={styles.bioSection}>
         <Text style={styles.bioText}>{profile.bio}</Text>
-        {/* Large translucent watermark — visually fills space below short bios */}
-        <Text style={styles.bioMark} aria-hidden>{icon}</Text>
+      </View>
+
+      {/* ── Swipe instruction hint ───────────────────────────────────────────── */}
+      <View style={styles.swipeHint}>
+        <Text style={styles.hintLeft}>← PASS</Text>
+        <Text style={styles.hintRight}>DATE →</Text>
       </View>
 
     </Animated.View>
@@ -182,56 +173,94 @@ export function SwipeCard({ profile, onSwipeLeft, onSwipeRight }: {
   onSwipeLeft: () => void;
   onSwipeRight: () => void;
 }) {
+  const _cat   = profileCategories[profile.id];
+  const _meta  = _cat ? CATEGORY_META[_cat] : null;
+  const accent = _meta?.color ?? '#000';
+
   const tx    = useSharedValue(0);
   const ty    = useSharedValue(0);
-  const scale = useSharedValue(0.95);
+  const scale = useSharedValue(0.94);
 
-  // Card springs into position on mount
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { scale.value = withSpring(1, { damping: 14, stiffness: 150 }); }, []);
+  useEffect(() => { scale.value = withSpring(1, { damping: 13, stiffness: 130 }); }, []);
 
   const pan = Gesture.Pan()
-    .onBegin(() => { scale.value = withTiming(1.03, { duration: 80 }); })
+    .onBegin(() => { scale.value = withTiming(1.012, { duration: 80 }); })
     .onUpdate((e) => {
       tx.value = e.translationX;
-      ty.value = e.translationY * 0.05;
+      ty.value = e.translationY * 0.04;
     })
     .onEnd((e) => {
       if (e.translationX > SWIPE_THRESHOLD) {
-        tx.value = withTiming(SCREEN_WIDTH * 1.8, { duration: 240 }, (done) => {
+        tx.value    = withTiming(SCREEN_WIDTH * 1.6, { duration: 240 }, (done) => {
           if (done) runOnJS(onSwipeRight)();
         });
-        scale.value = withTiming(0.94, { duration: 240 });
+        scale.value = withTiming(0.92, { duration: 240 });
       } else if (e.translationX < -SWIPE_THRESHOLD) {
-        tx.value = withTiming(-SCREEN_WIDTH * 1.8, { duration: 240 }, (done) => {
+        tx.value    = withTiming(-SCREEN_WIDTH * 1.6, { duration: 240 }, (done) => {
           if (done) runOnJS(onSwipeLeft)();
         });
-        scale.value = withTiming(0.94, { duration: 240 });
+        scale.value = withTiming(0.92, { duration: 240 });
       } else {
         tx.value    = withSpring(0, { damping: 18, stiffness: 200 });
         ty.value    = withSpring(0, { damping: 18, stiffness: 200 });
-        scale.value = withSpring(1, { damping: 14, stiffness: 160 });
+        scale.value = withSpring(1,  { damping: 13, stiffness: 150 });
       }
     });
 
   const cardStyle = useAnimatedStyle(() => {
-    const rotate = interpolate(tx.value, [-SCREEN_WIDTH * 0.5, 0, SCREEN_WIDTH * 0.5], [-15, 0, 15], Extrapolation.CLAMP);
-    return { transform: [{ translateX: tx.value }, { translateY: ty.value }, { rotate: `${rotate}deg` }, { scale: scale.value }] };
+    const rotate = interpolate(
+      tx.value,
+      [-SCREEN_WIDTH * 0.5, 0, SCREEN_WIDTH * 0.5],
+      [-12, 0, 12],
+      Extrapolation.CLAMP,
+    );
+    return {
+      transform: [
+        { translateX: tx.value },
+        { translateY: ty.value },
+        { rotate: `${rotate}deg` },
+        { scale: scale.value },
+      ],
+    };
   });
 
-  const dateStyle = useAnimatedStyle(() => ({ opacity: interpolate(tx.value, [20, 90], [0, 1], Extrapolation.CLAMP) }));
-  const passStyle = useAnimatedStyle(() => ({ opacity: interpolate(tx.value, [-90, -20], [1, 0], Extrapolation.CLAMP) }));
+  const dateOpacity = useAnimatedStyle(() => ({
+    opacity: interpolate(tx.value, [22, 100], [0, 1], Extrapolation.CLAMP),
+  }));
+  const passOpacity = useAnimatedStyle(() => ({
+    opacity: interpolate(tx.value, [-100, -22], [1, 0], Extrapolation.CLAMP),
+  }));
 
   return (
     <GestureDetector gesture={pan}>
-      <Animated.View style={[styles.shadow, cardStyle]}>
+      {/* Shadow wrapper — no overflow:hidden so iOS shadow renders correctly */}
+      <Animated.View style={[styles.shadow, { shadowColor: accent }, cardStyle]}>
         <View style={styles.inner}>
           <CardContent profile={profile} />
-          <Animated.View style={[StyleSheet.absoluteFill, styles.dateOv, dateStyle]} pointerEvents="none">
-            <View style={styles.stampDate}><Text style={styles.stampTxt}>❤️  DATE</Text></View>
+
+          {/* DATE overlay — right swipe */}
+          <Animated.View style={[StyleSheet.absoluteFill, dateOpacity]} pointerEvents="none">
+            <LinearGradient
+              colors={['rgba(34,197,94,0.00)', 'rgba(34,197,94,0.28)']}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+              style={StyleSheet.absoluteFill}
+            />
+            <View style={styles.stampDate}>
+              <Text style={styles.stampTxt}>❤️  DATE</Text>
+            </View>
           </Animated.View>
-          <Animated.View style={[StyleSheet.absoluteFill, styles.passOv, passStyle]} pointerEvents="none">
-            <View style={styles.stampPass}><Text style={styles.stampTxt}>✕  PASS</Text></View>
+
+          {/* PASS overlay — left swipe */}
+          <Animated.View style={[StyleSheet.absoluteFill, passOpacity]} pointerEvents="none">
+            <LinearGradient
+              colors={['rgba(232,25,60,0.28)', 'rgba(232,25,60,0.00)']}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+              style={StyleSheet.absoluteFill}
+            />
+            <View style={styles.stampPass}>
+              <Text style={styles.stampTxt}>✕  PASS</Text>
+            </View>
           </Animated.View>
         </View>
       </Animated.View>
@@ -239,11 +268,15 @@ export function SwipeCard({ profile, onSwipeLeft, onSwipeRight }: {
   );
 }
 
-// ── Static background stack card ──────────────────────────────────────────────
+// ── Static peek card (next in queue) ─────────────────────────────────────────
 
 export function ProfileCardStatic({ profile, style }: { profile: Profile; style?: ViewStyle }) {
+  const _cat   = profileCategories[profile.id];
+  const _meta  = _cat ? CATEGORY_META[_cat] : null;
+  const accent = _meta?.color ?? '#000';
+
   return (
-    <View style={[styles.shadow, style]}>
+    <View style={[styles.shadow, { shadowColor: accent, shadowOpacity: 0.35 }, style]}>
       <View style={styles.inner}>
         <CardContent profile={profile} />
       </View>
@@ -255,51 +288,54 @@ export function ProfileCardStatic({ profile, style }: { profile: Profile; style?
 
 const styles = StyleSheet.create({
 
-  // Card shell: shadow on outer (no overflow:hidden), clip on inner
+  // Outer shadow wrapper — explicit width keeps the card narrow and centred.
+  // No overflow:hidden here so iOS can render coloured shadows outside the bounds.
   shadow: {
+    width: CARD_WIDTH,
     height: CARD_HEIGHT,
-    borderRadius: 26,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 16 },
-    shadowOpacity: 0.62,
-    shadowRadius: 32,
-    elevation: 22,
+    borderRadius: 24,
+    shadowOffset: { width: 0, height: 14 },
+    shadowOpacity: 0.60,
+    shadowRadius: 30,
+    elevation: 20,
   },
+
+  // Inner clips content to rounded corners.
   inner: {
     flex: 1,
-    borderRadius: 26,
+    borderRadius: 24,
     overflow: 'hidden',
-    backgroundColor: '#0c0d11',
+    backgroundColor: CARD_BG,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
-  },
-  content: { flex: 1 },
-
-  // Category colour gradient — height matches header zone exactly so the
-  // gradient borders are never visible below the header content
-  headerGradient: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: RING_SIZE + HEADER_PAD * 2,
+    borderColor: 'rgba(255,255,255,0.08)',
   },
 
-  // Header: avatar + info side by side, symmetric vertical padding
-  header: {
-    flexDirection: 'row',
+  content: {
+    flex: 1,
+  },
+
+  // ── Top gradient zone ──────────────────────────────────────────────────────
+  topZone: {
+    height: TOP_ZONE_H,
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: HEADER_PAD,
-    gap: 14,
+    justifyContent: 'center',
+    backgroundColor: CARD_BG,
   },
 
-  // Avatar ring (border) + circle (filled)
+  // ── Avatar ────────────────────────────────────────────────────────────────
   avatarRing: {
+    width: RING_SIZE + 8,
+    height: RING_SIZE + 8,
+    borderRadius: (RING_SIZE + 8) / 2,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarRingInner: {
     width: RING_SIZE,
     height: RING_SIZE,
     borderRadius: RING_SIZE / 2,
-    borderWidth: 3,
+    borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -311,184 +347,171 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     overflow: 'hidden',
   },
-  // 28% dark overlay ensures white initials pop even against a same-colour gradient
   avatarDark: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.28)',
+    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.18)',
   },
   avatarInitials: {
     color: '#fff',
+    fontSize: 32,
     fontWeight: '800',
     letterSpacing: -1,
     includeFontPadding: false,
   },
 
-  // Info column (everything to the right of the avatar)
-  infoStack: {
-    flex: 1,
-    gap: 5,
-    justifyContent: 'center', // vertically centre the block within the avatar height
-  },
+  // ── Name row ──────────────────────────────────────────────────────────────
   nameRow: {
     flexDirection: 'row',
     alignItems: 'baseline',
-    gap: 7,
+    paddingHorizontal: 20,
+    paddingTop: 14,
   },
   name: {
     color: '#fff',
-    fontSize: 30,     // up from 26px
+    fontSize: 34,
     fontWeight: '900',
-    letterSpacing: -0.8,
+    letterSpacing: -1,
     flexShrink: 1,
-    textShadowColor: 'rgba(0,0,0,0.55)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 6,
   },
-  age: {
-    color: 'rgba(255,255,255,0.58)',
-    fontSize: 22,
+  nameSep: {
+    color: 'rgba(255,255,255,0.32)',
+    fontSize: 26,
     fontWeight: '300',
     flexShrink: 0,
-    textShadowColor: 'rgba(0,0,0,0.40)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 4,
+  },
+  nameAge: {
+    color: 'rgba(255,255,255,0.42)',
+    fontSize: 26,
+    fontWeight: '300',
+    flexShrink: 0,
   },
 
-  // Category pill (small, right under name)
-  catPill: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 9,
-    paddingVertical: 3,
+  // ── Job ───────────────────────────────────────────────────────────────────
+  job: {
+    fontSize: 15,
+    fontWeight: '700',
+    letterSpacing: 0.1,
+    paddingHorizontal: 20,
+    marginTop: 5,
+  },
+
+  // ── Location ──────────────────────────────────────────────────────────────
+  location: {
+    color: 'rgba(255,255,255,0.38)',
+    fontSize: 13,
+    fontWeight: '400',
+    paddingHorizontal: 20,
+    marginTop: 3,
+  },
+
+  // ── Category tags ─────────────────────────────────────────────────────────
+  tagsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    paddingHorizontal: 20,
+    marginTop: 10,
+  },
+  tag: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
     borderRadius: 20,
     borderWidth: 1,
   },
-  catPillText: {
-    color: '#fff',
+  tagText: {
     fontSize: 11,
     fontWeight: '800',
-    letterSpacing: 0.5,
-    textShadowColor: 'rgba(0,0,0,0.35)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
+    letterSpacing: 0.2,
   },
-
-  // Personality chips (wrap to multiple lines within the info column)
-  chipsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 5,
-  },
-  chip: {
-    paddingHorizontal: 9,
-    paddingVertical: 4,
-    borderRadius: 14,
+  tagNeutral: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.06)',
     borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
   },
-  chipText: {
-    color: 'rgba(255,255,255,0.82)',
+  tagNeutralText: {
+    color: 'rgba(255,255,255,0.50)',
     fontSize: 11,
     fontWeight: '600',
   },
 
-  // Job title — uses accent colour to tie back to category
-  job: {
-    fontSize: 13,
-    fontWeight: '700',
-    letterSpacing: 0.1,
-    textShadowColor: 'rgba(0,0,0,0.40)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 4,
-  },
-
-  // Location
-  locRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-  },
-  locPin: {
-    fontSize: 11,
-    opacity: 0.60,
-  },
-  locText: {
-    color: 'rgba(255,255,255,0.42)',
-    fontSize: 12,
-    fontWeight: '400',
-    letterSpacing: 0.2,
-  },
-
-  // Thin hairline between header and bio
+  // ── Divider ───────────────────────────────────────────────────────────────
   divider: {
     height: StyleSheet.hairlineWidth,
-    backgroundColor: 'rgba(255,255,255,0.09)',
-    marginHorizontal: 14,
+    backgroundColor: 'rgba(255,255,255,0.10)',
+    marginHorizontal: 20,
     marginTop: 12,
   },
 
-  // Bio — takes all remaining card height after header + divider.
-  // Font size bumped to 16px so even short bios fill the space visually.
+  // ── Bio ───────────────────────────────────────────────────────────────────
   bioSection: {
     flex: 1,
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     paddingTop: 14,
-    paddingBottom: 12,
+    paddingBottom: 4,
   },
   bioText: {
-    color: 'rgba(255,255,255,0.72)',
-    fontSize: 16,         // up from 14px
-    lineHeight: 25,
-    letterSpacing: 0.05,
-  },
-  // Large faint watermark fills visual weight below short bios
-  bioMark: {
-    position: 'absolute',
-    bottom: 6,
-    right: 12,
-    fontSize: 72,
-    lineHeight: 80,
-    opacity: 0.07,
-    includeFontPadding: false,
+    color: 'rgba(255,255,255,0.80)',
+    fontSize: 15.5,
+    lineHeight: 26,
+    letterSpacing: 0.1,
   },
 
-  // Swipe overlays
-  dateOv: {
-    backgroundColor: 'rgba(20,200,80,0.14)',
-    alignItems: 'flex-end',
-    paddingTop: 22,
-    paddingRight: 18,
+  // ── Swipe hint ────────────────────────────────────────────────────────────
+  swipeHint: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 14,
   },
-  passOv: {
-    backgroundColor: 'rgba(220,30,55,0.14)',
-    alignItems: 'flex-start',
-    paddingTop: 22,
-    paddingLeft: 18,
+  hintLeft: {
+    color: 'rgba(232,25,60,0.35)',
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 1.5,
   },
+  hintRight: {
+    color: 'rgba(34,197,94,0.35)',
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 1.5,
+  },
+
+  // ── Swipe overlays ─────────────────────────────────────────────────────────
   stampDate: {
-    paddingHorizontal: 15,
+    position: 'absolute',
+    top: 28,
+    right: 16,
+    paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 10,
-    borderWidth: 2.5,
-    borderColor: '#20d460',
-    transform: [{ rotate: '12deg' }],
-    backgroundColor: 'rgba(32,212,96,0.12)',
+    borderWidth: 3,
+    borderColor: '#22c55e',
+    transform: [{ rotate: '14deg' }],
+    backgroundColor: 'rgba(0,0,0,0.42)',
   },
   stampPass: {
-    paddingHorizontal: 15,
+    position: 'absolute',
+    top: 28,
+    left: 16,
+    paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 10,
-    borderWidth: 2.5,
-    borderColor: '#f02045',
-    transform: [{ rotate: '-12deg' }],
-    backgroundColor: 'rgba(240,32,69,0.12)',
+    borderWidth: 3,
+    borderColor: '#e8193c',
+    transform: [{ rotate: '-14deg' }],
+    backgroundColor: 'rgba(0,0,0,0.42)',
   },
   stampTxt: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: '900',
-    letterSpacing: 1.5,
+    letterSpacing: 2,
     color: '#fff',
+    textShadowColor: 'rgba(0,0,0,0.9)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
 });

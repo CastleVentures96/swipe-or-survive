@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
@@ -10,7 +11,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { SwipeCard, ProfileCardStatic, CARD_HEIGHT } from '@/components/swipe-card';
+import { SwipeCard, ProfileCardStatic, CARD_HEIGHT, CARD_WIDTH } from '@/components/swipe-card';
 import { allProfiles, type Profile } from '@/data/profiles';
 import { profileCategories } from '@/data/profile-categories';
 
@@ -67,8 +68,8 @@ export default function SwipeGameScreen() {
   const flashStyle = useAnimatedStyle(() => ({
     opacity: flashOpacity.value,
     backgroundColor: flashIsSuccess.value
-      ? 'rgba(76, 175, 80, 0.28)'
-      : 'rgba(255, 77, 109, 0.28)',
+      ? 'rgba(34,197,94,0.22)'
+      : 'rgba(232,25,60,0.22)',
   }));
 
   function triggerFlash(success: boolean) {
@@ -84,6 +85,58 @@ export default function SwipeGameScreen() {
   const dateScale = useSharedValue(1);
   const passBtnStyle = useAnimatedStyle(() => ({ transform: [{ scale: passScale.value }] }));
   const dateBtnStyle = useAnimatedStyle(() => ({ transform: [{ scale: dateScale.value }] }));
+
+  // ── Card shake on wrong answer ────────────────────────────────────────────
+  const shakeX = useSharedValue(0);
+  const cardShakeStyle = useAnimatedStyle(() => ({ transform: [{ translateX: shakeX.value }] }));
+
+  function triggerShake() {
+    shakeX.value = withSequence(
+      withTiming(-11, { duration: 50 }),
+      withTiming(11,  { duration: 50 }),
+      withTiming(-8,  { duration: 50 }),
+      withTiming(8,   { duration: 50 }),
+      withTiming(-4,  { duration: 50 }),
+      withTiming(0,   { duration: 50 })
+    );
+  }
+
+  // ── Floating score animation ──────────────────────────────────────────────
+  const scoreFloatY       = useSharedValue(0);
+  const scoreFloatOpacity = useSharedValue(0);
+  const [scoreFloat, setScoreFloat] = useState({ text: '', pos: true });
+
+  const scoreFloatStyle = useAnimatedStyle(() => ({
+    opacity:   scoreFloatOpacity.value,
+    transform: [{ translateY: scoreFloatY.value }],
+  }));
+
+  function triggerScoreFloat(points: number) {
+    setScoreFloat({ text: points > 0 ? `+${points}` : `${points}`, pos: points > 0 });
+    scoreFloatY.value = 0;
+    scoreFloatOpacity.value = 0;
+    scoreFloatOpacity.value = withSequence(
+      withTiming(1, { duration: 80 }),
+      withTiming(1, { duration: 380 }),
+      withTiming(0, { duration: 280 })
+    );
+    scoreFloatY.value = withTiming(-72, { duration: 740 });
+  }
+
+  // ── Reveal entrance animation ─────────────────────────────────────────────
+  const revealOpacity  = useSharedValue(0);
+  const revealSlideY   = useSharedValue(18);
+  const revealAnimStyle = useAnimatedStyle(() => ({
+    opacity:   revealOpacity.value,
+    transform: [{ translateY: revealSlideY.value }],
+  }));
+
+  function triggerReveal() {
+    revealOpacity.value = 0;
+    revealSlideY.value  = 18;
+    revealOpacity.value = withTiming(1, { duration: 260 });
+    revealSlideY.value  = withTiming(0, { duration: 260 });
+  }
 
   // ── Game state ────────────────────────────────────────────────────────────
   const [state, setState] = useState<GameState>(() => ({
@@ -119,17 +172,22 @@ export default function SwipeGameScreen() {
 
   function handleSwipeLeft() {
     const isCorrect = profile.correctDecision === 'reject';
+    const newStreak = isCorrect ? state.streak + 1 : 0;
+    const points    = isCorrect ? getPointsForCorrect(newStreak) : -10;
     triggerFlash(isCorrect);
+    if (!isCorrect) triggerShake();
+    triggerScoreFloat(points);
+    triggerReveal();
     setState((prev) => {
-      const newStreak = isCorrect ? prev.streak + 1 : 0;
-      const points = isCorrect ? getPointsForCorrect(newStreak) : -10;
+      const ns  = isCorrect ? prev.streak + 1 : 0;
+      const pts = isCorrect ? getPointsForCorrect(ns) : -10;
       return {
         ...prev,
-        score: prev.score + points,
+        score: prev.score + pts,
         correct: isCorrect ? prev.correct + 1 : prev.correct,
-        streak: newStreak,
-        bestStreak: Math.max(newStreak, prev.streak, prev.bestStreak),
-        lastPoints: points,
+        streak: ns,
+        bestStreak: Math.max(ns, prev.streak, prev.bestStreak),
+        lastPoints: pts,
         phase: 'reveal',
         swipedRight: false,
         wasCorrect: isCorrect,
@@ -140,17 +198,22 @@ export default function SwipeGameScreen() {
 
   function handleSwipeRight() {
     const isCorrect = profile.correctDecision === 'date';
+    const newStreak = isCorrect ? state.streak + 1 : 0;
+    const points    = isCorrect ? getPointsForCorrect(newStreak) : -10;
     triggerFlash(isCorrect);
+    if (!isCorrect) triggerShake();
+    triggerScoreFloat(points);
+    triggerReveal();
     setState((prev) => {
-      const newStreak = isCorrect ? prev.streak + 1 : 0;
-      const points = isCorrect ? getPointsForCorrect(newStreak) : -10;
+      const ns  = isCorrect ? prev.streak + 1 : 0;
+      const pts = isCorrect ? getPointsForCorrect(ns) : -10;
       return {
         ...prev,
-        score: prev.score + points,
+        score: prev.score + pts,
         correct: isCorrect ? prev.correct + 1 : prev.correct,
-        streak: newStreak,
-        bestStreak: Math.max(newStreak, prev.streak, prev.bestStreak),
-        lastPoints: points,
+        streak: ns,
+        bestStreak: Math.max(ns, prev.streak, prev.bestStreak),
+        lastPoints: pts,
         phase: 'reveal',
         swipedRight: true,
         wasCorrect: isCorrect,
@@ -199,7 +262,7 @@ export default function SwipeGameScreen() {
   }
 
   const headerPaddingTop = insets.top + 10;
-  const bottomPadding = insets.bottom + 8;
+  const bottomPadding = insets.bottom + 4;
 
   return (
     <View style={styles.container}>
@@ -209,8 +272,15 @@ export default function SwipeGameScreen() {
       {/* ── Header ──────────────────────────────────────────────────────────── */}
       <View style={[styles.header, { paddingTop: headerPaddingTop }]}>
         <View style={styles.headerRow}>
-          <Text style={styles.progressNum}>{progress} / {GAME_SIZE}</Text>
 
+          {/* Progress counter */}
+          <View style={styles.progressPill}>
+            <Text style={styles.progCurrent}>{progress}</Text>
+            <Text style={styles.progSep}> / </Text>
+            <Text style={styles.progTotal}>{GAME_SIZE}</Text>
+          </View>
+
+          {/* Streak badge */}
           {state.streak >= 2 && (
             <View style={styles.streakBadge}>
               <Text style={styles.streakFire}>🔥</Text>
@@ -221,6 +291,7 @@ export default function SwipeGameScreen() {
             </View>
           )}
 
+          {/* Score */}
           <View style={[styles.scoreBadge, state.score < 0 && styles.scoreBadgeNeg]}>
             <Text style={styles.scoreText}>
               {state.score > 0 ? '+' : ''}{state.score}
@@ -228,60 +299,74 @@ export default function SwipeGameScreen() {
           </View>
         </View>
 
-        <View style={styles.progressBarOuter}>
-          <View style={[styles.progressBarInner, { width: `${progressPct}%` as `${number}%` }]} />
+        {/* Progress bar */}
+        <View style={styles.progressTrack}>
+          <View style={[styles.progressFill, { width: `${progressPct}%` as `${number}%` }]} />
         </View>
       </View>
+
+      {/* Floating score badge — rises from card center on each swipe */}
+      <Animated.View style={[styles.scoreFloat, scoreFloatStyle]} pointerEvents="none">
+        <Text style={[styles.scoreFloatTxt, scoreFloat.pos ? styles.scoreFloatPos : styles.scoreFloatNeg]}>
+          {scoreFloat.text}
+        </Text>
+      </Animated.View>
 
       {/* ── Swiping phase ───────────────────────────────────────────────────── */}
       {state.phase === 'swiping' && (
         <View style={styles.gameArea}>
-          {/* Card stack */}
-          <View style={styles.cardStack}>
-            {nextProfile && (
-              <View style={styles.stackCard} pointerEvents="none">
-                <ProfileCardStatic profile={nextProfile} />
+          {/* cardColumn centres the card horizontally and stacks buttons
+              directly beneath it — no gap between card and buttons */}
+          <View style={styles.cardColumn}>
+
+            {/* Card stack — shake animation applied at this level */}
+            <Animated.View style={[styles.cardStack, cardShakeStyle]}>
+              {nextProfile && (
+                <View style={styles.stackCard} pointerEvents="none">
+                  <ProfileCardStatic profile={nextProfile} />
+                </View>
+              )}
+              <View style={styles.activeCard}>
+                <SwipeCard
+                  key={profile.id}
+                  profile={profile}
+                  onSwipeLeft={handleSwipeLeft}
+                  onSwipeRight={handleSwipeRight}
+                />
               </View>
-            )}
-            <View style={styles.activeCard}>
-              <SwipeCard
-                key={profile.id}
-                profile={profile}
-                onSwipeLeft={handleSwipeLeft}
-                onSwipeRight={handleSwipeRight}
-              />
-            </View>
-          </View>
+            </Animated.View>
 
-          {/* ── Action buttons ─────────────────────────────────────────────── */}
-          <View style={styles.actions}>
-            {/* PASS button */}
-            <View style={styles.actionGroup}>
-              <Pressable
-                onPressIn={() => { passScale.value = withTiming(0.86, { duration: 75 }); }}
-                onPressOut={() => { passScale.value = withSpring(1, { damping: 9, stiffness: 200 }); }}
-                onPress={handleSwipeLeft}
-                hitSlop={14}>
-                <Animated.View style={[styles.actionBtn, styles.passBtn, passBtnStyle]}>
-                  <Text style={styles.passIcon}>✕</Text>
-                </Animated.View>
-              </Pressable>
-              <Text style={styles.passLabel}>PASS</Text>
+            {/* ── Action buttons — directly below card ──────────────────────── */}
+            <View style={styles.actions}>
+              {/* PASS */}
+              <View style={styles.btnGroup}>
+                <Pressable
+                  onPressIn={() => { passScale.value = withTiming(0.86, { duration: 75 }); }}
+                  onPressOut={() => { passScale.value = withSpring(1, { damping: 9, stiffness: 200 }); }}
+                  onPress={handleSwipeLeft}
+                  hitSlop={14}>
+                  <Animated.View style={[styles.passBtn, passBtnStyle]}>
+                    <Text style={styles.passIcon}>✕</Text>
+                  </Animated.View>
+                </Pressable>
+                <Text style={styles.passLabel}>PASS</Text>
+              </View>
+
+              {/* DATE */}
+              <View style={styles.btnGroup}>
+                <Pressable
+                  onPressIn={() => { dateScale.value = withTiming(0.86, { duration: 75 }); }}
+                  onPressOut={() => { dateScale.value = withSpring(1, { damping: 9, stiffness: 200 }); }}
+                  onPress={handleSwipeRight}
+                  hitSlop={14}>
+                  <Animated.View style={[styles.dateBtn, dateBtnStyle]}>
+                    <Text style={styles.dateIcon}>♥</Text>
+                  </Animated.View>
+                </Pressable>
+                <Text style={styles.dateLabel}>DATE</Text>
+              </View>
             </View>
 
-            {/* DATE button */}
-            <View style={styles.actionGroup}>
-              <Pressable
-                onPressIn={() => { dateScale.value = withTiming(0.86, { duration: 75 }); }}
-                onPressOut={() => { dateScale.value = withSpring(1, { damping: 9, stiffness: 200 }); }}
-                onPress={handleSwipeRight}
-                hitSlop={14}>
-                <Animated.View style={[styles.actionBtn, styles.dateBtn, dateBtnStyle]}>
-                  <Text style={styles.dateIcon}>♥</Text>
-                </Animated.View>
-              </Pressable>
-              <Text style={styles.dateLabel}>DATE</Text>
-            </View>
           </View>
 
           <View style={{ height: bottomPadding }} />
@@ -290,63 +375,90 @@ export default function SwipeGameScreen() {
 
       {/* ── Reveal phase ────────────────────────────────────────────────────── */}
       {state.phase === 'reveal' && (
-        <ScrollView
-          style={styles.revealScroll}
-          contentContainerStyle={[styles.revealContent, { paddingBottom: bottomPadding + 16 }]}
-          showsVerticalScrollIndicator={false}>
+        <Animated.View style={[styles.revealArea, revealAnimStyle]}>
 
-          <View style={[styles.revealCard, state.wasCorrect ? styles.revealCorrect : styles.revealWrong]}>
+          {/* Result banner */}
+          <View style={styles.revealBanner}>
+            <LinearGradient
+              colors={
+                state.wasCorrect
+                  ? ['rgba(34,197,94,0.30)', 'rgba(34,197,94,0.06)', 'transparent']
+                  : ['rgba(232,25,60,0.30)', 'rgba(232,25,60,0.06)', 'transparent']
+              }
+              locations={[0, 0.55, 1]}
+              style={StyleSheet.absoluteFill}
+              pointerEvents="none"
+            />
             <Text style={styles.revealEmoji}>{state.wasCorrect ? '✅' : '❌'}</Text>
             <Text style={styles.revealTitle}>{getRevealTitle()}</Text>
-
-            <View style={styles.pointsRow}>
-              <View style={[styles.pointsBadge, state.wasCorrect ? styles.pointsBadgeGreen : styles.pointsBadgeRed]}>
-                <Text style={[styles.pointsText, state.wasCorrect ? styles.pointsGreen : styles.pointsRed]}>
+            <View style={styles.revealMeta}>
+              <View style={[styles.pointsPill, state.wasCorrect ? styles.pointsPillGreen : styles.pointsPillRed]}>
+                <Text style={[styles.pointsVal, state.wasCorrect ? styles.pointsValGreen : styles.pointsValRed]}>
                   {state.lastPoints > 0 ? '+' : ''}{state.lastPoints} pts
                 </Text>
               </View>
               {isComboActive && (
-                <View style={styles.comboBadge}>
-                  <Text style={styles.comboBadgeText}>🔥 ×{currentCombo} combo</Text>
+                <View style={styles.comboPill}>
+                  <Text style={styles.comboText}>🔥 ×{currentCombo} combo</Text>
                 </View>
               )}
             </View>
+          </View>
 
-            <View style={styles.reasonCard}>
+          {/* Scrollable content */}
+          <ScrollView
+            style={styles.revealScroll}
+            contentContainerStyle={styles.revealScrollContent}
+            showsVerticalScrollIndicator={false}>
+
+            {/* Decision reason — plain, no label */}
+            <View style={styles.reasonPanel}>
               <Text style={styles.reasonText}>{profile.decisionReason}</Text>
             </View>
 
+            {/* Green flags — left-bordered, dot markers */}
             {profile.greenFlags.length > 0 && (
-              <View style={[styles.flagsCard, styles.flagsCardGreen]}>
-                <Text style={[styles.flagsTitle, styles.flagsTitleGreen]}>✅ Green Flags</Text>
+              <View style={styles.flagGroupGreen}>
                 {profile.greenFlags.map((flag, i) => (
                   <View key={i} style={styles.flagRow}>
-                    <Text style={styles.flagBullet}>✅</Text>
+                    <View style={styles.dotGreen} />
                     <Text style={styles.flagText}>{flag}</Text>
                   </View>
                 ))}
               </View>
             )}
 
+            {/* Red flags — left-bordered, dot markers */}
             {profile.redFlags.length > 0 && (
-              <View style={[styles.flagsCard, styles.flagsCardRed]}>
-                <Text style={[styles.flagsTitle, styles.flagsTitleRed]}>🚩 Red Flags</Text>
+              <View style={styles.flagGroupRed}>
                 {profile.redFlags.map((flag, i) => (
                   <View key={i} style={styles.flagRow}>
-                    <Text style={styles.flagBullet}>🚩</Text>
+                    <View style={styles.dotRed} />
                     <Text style={styles.flagText}>{flag}</Text>
                   </View>
                 ))}
               </View>
             )}
+          </ScrollView>
 
-            <TouchableOpacity style={styles.nextBtn} onPress={handleNext} activeOpacity={0.8}>
-              <Text style={styles.nextBtnText}>
-                {state.index >= GAME_SIZE - 1 ? 'See Results 🎉' : 'Next Profile →'}
-              </Text>
+          {/* Fixed footer — Next button */}
+          <View style={[styles.revealFooter, { paddingBottom: Math.max(bottomPadding, 12) }]}>
+            <TouchableOpacity
+              style={styles.nextBtn}
+              onPress={handleNext}
+              activeOpacity={0.85}>
+              <LinearGradient
+                colors={['#ff6b84', '#ff4d6d', '#e03055']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.nextBtnGrad}>
+                <Text style={styles.nextBtnText}>
+                  {state.index >= GAME_SIZE - 1 ? 'See Results 🎉' : 'Next Profile →'}
+                </Text>
+              </LinearGradient>
             </TouchableOpacity>
           </View>
-        </ScrollView>
+        </Animated.View>
       )}
     </View>
   );
@@ -368,98 +480,152 @@ const styles = StyleSheet.create({
     zIndex: 999,
   },
 
+  // ── Floating score ─────────────────────────────────────────────────────────
+  scoreFloat: {
+    position: 'absolute',
+    top: '42%',
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 1000,
+    pointerEvents: 'none',
+  },
+  scoreFloatTxt: {
+    fontSize: 60,
+    fontWeight: '900',
+    letterSpacing: -2,
+    textShadowColor: 'rgba(0,0,0,0.55)',
+    textShadowOffset: { width: 0, height: 3 },
+    textShadowRadius: 10,
+  },
+  scoreFloatPos: { color: '#4ade80' },
+  scoreFloatNeg: { color: '#ff4d6d' },
+
   // ── Header ─────────────────────────────────────────────────────────────────
   header: {
     paddingHorizontal: 20,
-    paddingBottom: 12,
-    gap: 10,
+    paddingBottom: 14,
+    gap: 11,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(255,255,255,0.07)',
   },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
   },
-  progressNum: {
-    color: '#666',
-    fontSize: 14,
-    fontWeight: '700',
-    letterSpacing: 0.5,
+
+  // Progress counter
+  progressPill: {
     flex: 1,
+    flexDirection: 'row',
+    alignItems: 'baseline',
   },
+  progCurrent: {
+    color: '#ffffff',
+    fontSize: 26,
+    fontWeight: '900',
+    letterSpacing: -0.6,
+  },
+  progSep: {
+    color: 'rgba(255,255,255,0.20)',
+    fontSize: 18,
+    fontWeight: '400',
+    marginHorizontal: 2,
+  },
+  progTotal: {
+    color: 'rgba(255,255,255,0.28)',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+
+  // Streak badge
   streakBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1f1200',
+    backgroundColor: 'rgba(255,152,0,0.12)',
     borderRadius: 20,
-    borderWidth: 1.5,
-    borderColor: '#cc6600',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    borderWidth: 1,
+    borderColor: 'rgba(255,152,0,0.35)',
+    paddingHorizontal: 11,
+    paddingVertical: 6,
     gap: 3,
   },
   streakFire: { fontSize: 13 },
   streakCount: {
     color: '#ff9800',
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '800',
   },
   comboMult: {
     color: '#ffc107',
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '700',
     marginLeft: 1,
   },
+
+  // Score badge
   scoreBadge: {
-    backgroundColor: '#0a1f0a',
+    backgroundColor: 'rgba(34,197,94,0.09)',
     borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: '#2d6a2d',
-    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(34,197,94,0.30)',
+    paddingHorizontal: 14,
     paddingVertical: 7,
     minWidth: 74,
     alignItems: 'center',
   },
   scoreBadgeNeg: {
-    backgroundColor: '#1f0a0a',
-    borderColor: '#6a2d2d',
+    backgroundColor: 'rgba(232,25,60,0.09)',
+    borderColor: 'rgba(232,25,60,0.30)',
   },
   scoreText: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '800',
     letterSpacing: 0.2,
   },
-  progressBarOuter: {
+
+  // Progress bar
+  progressTrack: {
     height: 3,
-    backgroundColor: '#1e1e1e',
+    backgroundColor: 'rgba(255,255,255,0.07)',
     borderRadius: 2,
     overflow: 'hidden',
   },
-  progressBarInner: {
+  progressFill: {
     height: '100%',
     backgroundColor: '#ff4d6d',
     borderRadius: 2,
   },
 
   // ── Game area ───────────────────────────────────────────────────────────────
+  // Centre the card horizontally so dark gutters are visible on both sides.
   gameArea: {
     flex: 1,
-    paddingHorizontal: 16,
+    alignItems: 'center',
+    paddingTop: 8,
+  },
+
+  // Column that holds the card stack + buttons as a tight unit.
+  cardColumn: {
+    alignItems: 'center',
     gap: 12,
   },
 
-  // Card stack
+  // Card stack — explicit width matches the card so peek card aligns.
   cardStack: {
+    width: CARD_WIDTH,
     height: CARD_HEIGHT + STACK_OFFSET,
     position: 'relative',
   },
   stackCard: {
     position: 'absolute',
     top: STACK_OFFSET,
-    left: 10,
-    right: 10,
-    opacity: 0.35,
-    transform: [{ scale: 0.97 }],
+    left: 0,
+    right: 0,
+    opacity: 0.28,
+    transform: [{ scale: 0.96 }],
   },
   activeCard: {
     position: 'absolute',
@@ -469,217 +635,242 @@ const styles = StyleSheet.create({
   },
 
   // ── Action buttons ──────────────────────────────────────────────────────────
+  // Width matches card so buttons align under its edges.
   actions: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'flex-start',
-    gap: 48,
+    gap: 72,
+    width: CARD_WIDTH,
   },
-  actionGroup: {
+  btnGroup: {
     alignItems: 'center',
     gap: 8,
   },
-  actionBtn: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
+  passBtn: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2.5,
-  },
-  passBtn: {
-    backgroundColor: '#170408',
-    borderColor: '#c41430',
-    shadowColor: '#ff2244',
-    shadowOffset: { width: 0, height: 6 },
+    backgroundColor: 'rgba(232,25,60,0.08)',
+    borderWidth: 2,
+    borderColor: '#e8193c',
+    shadowColor: '#e8193c',
+    shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.55,
     shadowRadius: 18,
-    elevation: 14,
+    elevation: 12,
   },
   dateBtn: {
-    backgroundColor: '#04120a',
-    borderColor: '#1e8038',
-    shadowColor: '#33cc55',
-    shadowOffset: { width: 0, height: 6 },
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(34,197,94,0.08)',
+    borderWidth: 2,
+    borderColor: '#22c55e',
+    shadowColor: '#22c55e',
+    shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.55,
     shadowRadius: 18,
-    elevation: 14,
+    elevation: 12,
   },
   passIcon: {
     color: '#f02040',
-    fontSize: 30,
+    fontSize: 28,
     fontWeight: '900',
-    lineHeight: 34,
+    lineHeight: 32,
     includeFontPadding: false,
   },
   dateIcon: {
-    color: '#22cc44',
-    fontSize: 30,
+    color: '#22c55e',
+    fontSize: 28,
     fontWeight: '900',
-    lineHeight: 34,
+    lineHeight: 32,
     includeFontPadding: false,
   },
   passLabel: {
-    color: '#c41430',
+    color: '#e8193c',
     fontSize: 10,
     fontWeight: '800',
-    letterSpacing: 2,
+    letterSpacing: 2.5,
   },
   dateLabel: {
-    color: '#1e8038',
+    color: '#22c55e',
     fontSize: 10,
     fontWeight: '800',
-    letterSpacing: 2,
-  },
-  swipeHint: {
-    color: '#2e2e2e',
-    fontSize: 11,
-    textAlign: 'center',
-    letterSpacing: 0.4,
-    marginTop: -8,
+    letterSpacing: 2.5,
   },
 
   // ── Reveal phase ────────────────────────────────────────────────────────────
-  revealScroll: { flex: 1 },
-  revealContent: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    gap: 12,
+  revealArea: {
+    flex: 1,
+    flexDirection: 'column',
   },
-  revealCard: {
-    borderRadius: 22,
-    padding: 22,
-    borderWidth: 1.5,
+
+  // Result banner
+  revealBanner: {
     alignItems: 'center',
-    gap: 14,
+    paddingHorizontal: 24,
+    paddingTop: 22,
+    paddingBottom: 20,
+    gap: 9,
+    overflow: 'hidden',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(255,255,255,0.07)',
   },
-  revealCorrect: {
-    backgroundColor: '#071407',
-    borderColor: '#2d6a2d',
+  revealEmoji: {
+    fontSize: 50,
   },
-  revealWrong: {
-    backgroundColor: '#140707',
-    borderColor: '#6a2d2d',
-  },
-  revealEmoji: { fontSize: 52 },
   revealTitle: {
     color: '#fff',
-    fontSize: 21,
+    fontSize: 20,
     fontWeight: '800',
     textAlign: 'center',
     letterSpacing: -0.3,
+    lineHeight: 27,
   },
-  pointsRow: {
+  revealMeta: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
     flexWrap: 'wrap',
     justifyContent: 'center',
   },
-  pointsBadge: {
+  pointsPill: {
     borderRadius: 12,
-    paddingHorizontal: 18,
-    paddingVertical: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 7,
     borderWidth: 1,
   },
-  pointsBadgeGreen: {
-    backgroundColor: '#0a1f0a',
-    borderColor: '#2d6a2d',
+  pointsPillGreen: {
+    backgroundColor: 'rgba(34,197,94,0.10)',
+    borderColor: 'rgba(34,197,94,0.32)',
   },
-  pointsBadgeRed: {
-    backgroundColor: '#1f0a0a',
-    borderColor: '#6a2d2d',
+  pointsPillRed: {
+    backgroundColor: 'rgba(232,25,60,0.10)',
+    borderColor: 'rgba(232,25,60,0.32)',
   },
-  pointsText: {
+  pointsVal: {
     fontSize: 18,
     fontWeight: '800',
     letterSpacing: 0.3,
   },
-  pointsGreen: { color: '#4caf50' },
-  pointsRed: { color: '#ff4d6d' },
-  comboBadge: {
-    backgroundColor: '#1f1200',
+  pointsValGreen: { color: '#4ade80' },
+  pointsValRed: { color: '#ff4d6d' },
+  comboPill: {
+    backgroundColor: 'rgba(255,152,0,0.12)',
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#cc6600',
+    borderColor: 'rgba(255,152,0,0.35)',
     paddingHorizontal: 12,
     paddingVertical: 6,
   },
-  comboBadgeText: {
+  comboText: {
     color: '#ff9800',
     fontSize: 13,
     fontWeight: '700',
   },
-  reasonCard: {
-    backgroundColor: '#111',
-    borderRadius: 14,
+
+  // Scrollable content
+  revealScroll: {
+    flex: 1,
+  },
+  revealScrollContent: {
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 10,
+    gap: 10,
+  },
+
+  // Reason panel — no label, just the italic verdict text
+  reasonPanel: {
+    backgroundColor: '#111318',
+    borderRadius: 18,
     padding: 16,
-    width: '100%',
     borderWidth: 1,
-    borderColor: '#1e1e1e',
+    borderColor: 'rgba(255,255,255,0.07)',
   },
   reasonText: {
-    color: '#bbb',
-    fontSize: 14,
-    lineHeight: 22,
-    textAlign: 'center',
+    color: 'rgba(255,255,255,0.78)',
+    fontSize: 14.5,
+    lineHeight: 23,
     fontStyle: 'italic',
   },
-  flagsCard: {
-    width: '100%',
-    borderRadius: 14,
+
+  // Flag groups — left accent border, dot markers, no section headers
+  flagGroupGreen: {
+    backgroundColor: 'rgba(34,197,94,0.05)',
+    borderRadius: 16,
     padding: 14,
-    gap: 8,
+    gap: 10,
     borderWidth: 1,
+    borderColor: 'rgba(34,197,94,0.15)',
+    borderLeftWidth: 3,
+    borderLeftColor: '#22c55e',
   },
-  flagsCardGreen: {
-    backgroundColor: '#071407',
-    borderColor: '#1a3d1a',
+  flagGroupRed: {
+    backgroundColor: 'rgba(232,25,60,0.05)',
+    borderRadius: 16,
+    padding: 14,
+    gap: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(232,25,60,0.15)',
+    borderLeftWidth: 3,
+    borderLeftColor: '#e8193c',
   },
-  flagsCardRed: {
-    backgroundColor: '#140707',
-    borderColor: '#3d1a1a',
+  dotGreen: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: '#22c55e',
+    marginTop: 7,
+    flexShrink: 0,
   },
-  flagsTitle: {
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
-    marginBottom: 4,
+  dotRed: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: '#e8193c',
+    marginTop: 7,
+    flexShrink: 0,
   },
-  flagsTitleGreen: { color: '#4caf50' },
-  flagsTitleRed: { color: '#ff4d6d' },
   flagRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 8,
-  },
-  flagBullet: {
-    fontSize: 12,
-    marginTop: 3,
+    gap: 10,
   },
   flagText: {
-    color: '#ccc',
-    fontSize: 13,
-    lineHeight: 20,
+    color: 'rgba(255,255,255,0.75)',
+    fontSize: 13.5,
+    lineHeight: 21,
     flex: 1,
   },
+
+  // Footer — Next button
+  revealFooter: {
+    paddingHorizontal: 16,
+    paddingTop: 10,
+  },
   nextBtn: {
-    backgroundColor: '#ff4d6d',
-    paddingHorizontal: 36,
-    paddingVertical: 15,
-    borderRadius: 14,
-    marginTop: 4,
+    borderRadius: 16,
+    overflow: 'hidden',
     shadowColor: '#ff4d6d',
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.5,
-    shadowRadius: 14,
-    elevation: 8,
+    shadowOpacity: 0.50,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+  nextBtnGrad: {
+    paddingVertical: 18,
+    alignItems: 'center',
   },
   nextBtnText: {
     color: '#fff',
-    fontSize: 17,
-    fontWeight: '800',
+    fontSize: 18,
+    fontWeight: '900',
     letterSpacing: 0.3,
   },
 });
