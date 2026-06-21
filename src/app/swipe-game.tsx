@@ -376,88 +376,121 @@ export default function SwipeGameScreen() {
       {/* ── Reveal phase ────────────────────────────────────────────────────── */}
       {state.phase === 'reveal' && (
         <Animated.View style={[styles.revealArea, revealAnimStyle]}>
+          <ScrollView
+            style={styles.revealScroll}
+            contentContainerStyle={[
+              styles.revealScrollContent,
+              { paddingBottom: Math.max(bottomPadding, 24) },
+            ]}
+            showsVerticalScrollIndicator={false}>
 
-          {/* Result banner */}
-          <View style={styles.revealBanner}>
-            <LinearGradient
-              colors={
-                state.wasCorrect
-                  ? ['rgba(34,197,94,0.30)', 'rgba(34,197,94,0.06)', 'transparent']
-                  : ['rgba(232,25,60,0.30)', 'rgba(232,25,60,0.06)', 'transparent']
-              }
-              locations={[0, 0.55, 1]}
-              style={StyleSheet.absoluteFill}
-              pointerEvents="none"
-            />
-            <Text style={styles.revealEmoji}>{state.wasCorrect ? '✅' : '❌'}</Text>
-            <Text style={styles.revealTitle}>{getRevealTitle()}</Text>
-            <View style={styles.revealMeta}>
-              <View style={[styles.pointsPill, state.wasCorrect ? styles.pointsPillGreen : styles.pointsPillRed]}>
-                <Text style={[styles.pointsVal, state.wasCorrect ? styles.pointsValGreen : styles.pointsValRed]}>
+            {/* ── Reveal card — same width, radius, and shadow as profile card ── */}
+            <View style={[
+              styles.revealCard,
+              { shadowColor: state.wasCorrect ? '#22c55e' : '#e8193c' },
+            ]}>
+
+              {/* 1. Result icon */}
+              <View style={[
+                styles.resultIconWrap,
+                state.wasCorrect ? styles.resultIconGreen : styles.resultIconRed,
+              ]}>
+                <Text style={[
+                  styles.resultIconTxt,
+                  state.wasCorrect ? styles.resultIconTxtGreen : styles.resultIconTxtRed,
+                ]}>
+                  {state.wasCorrect ? '✓' : '✕'}
+                </Text>
+              </View>
+
+              {/* 2. Result title */}
+              <Text style={styles.resultTitle}>
+                {state.wasCorrect ? 'Correct Choice' : 'Wrong Choice'}
+              </Text>
+
+              {/* What the player did */}
+              <Text style={styles.resultSubtitle}>
+                {state.swipedRight
+                  ? `You dated ${profile.name}`
+                  : `You passed on ${profile.name}`}
+              </Text>
+
+              {/* 3. Score change */}
+              <View style={[
+                styles.scorePill,
+                state.wasCorrect ? styles.scorePillGreen : styles.scorePillRed,
+              ]}>
+                <Text style={[
+                  styles.scoreChangeNum,
+                  state.wasCorrect ? styles.scoreChangeGreen : styles.scoreChangeRed,
+                ]}>
                   {state.lastPoints > 0 ? '+' : ''}{state.lastPoints} pts
                 </Text>
               </View>
+
+              {/* Combo bonus */}
               {isComboActive && (
-                <View style={styles.comboPill}>
-                  <Text style={styles.comboText}>🔥 ×{currentCombo} combo</Text>
+                <View style={styles.comboBadge}>
+                  <Text style={styles.comboBadgeTxt}>🔥 ×{currentCombo} combo bonus</Text>
                 </View>
               )}
-            </View>
-          </View>
 
-          {/* Scrollable content */}
-          <ScrollView
-            style={styles.revealScroll}
-            contentContainerStyle={styles.revealScrollContent}
-            showsVerticalScrollIndicator={false}>
+              {/* Divider */}
+              <View style={styles.revealDivider} />
 
-            {/* Decision reason — plain, no label */}
-            <View style={styles.reasonPanel}>
-              <Text style={styles.reasonText}>{profile.decisionReason}</Text>
-            </View>
+              {/* 4. Explanation */}
+              <Text style={styles.explanationText}>{profile.decisionReason}</Text>
 
-            {/* Green flags — left-bordered, dot markers */}
-            {profile.greenFlags.length > 0 && (
-              <View style={styles.flagGroupGreen}>
-                {profile.greenFlags.map((flag, i) => (
-                  <View key={i} style={styles.flagRow}>
-                    <View style={styles.dotGreen} />
-                    <Text style={styles.flagText}>{flag}</Text>
+              {/* 5. Green flags */}
+              {profile.greenFlags.length > 0 && (
+                <View style={styles.flagCardGreen}>
+                  <View style={styles.flagCardHeader}>
+                    <View style={styles.flagHeaderDotGreen} />
+                    <Text style={styles.flagCardTitleGreen}>Green Flags</Text>
                   </View>
-                ))}
-              </View>
-            )}
+                  {profile.greenFlags.map((flag, i) => (
+                    <View key={i} style={styles.flagItem}>
+                      <View style={styles.dotGreen} />
+                      <Text style={styles.flagText}>{flag}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
 
-            {/* Red flags — left-bordered, dot markers */}
-            {profile.redFlags.length > 0 && (
-              <View style={styles.flagGroupRed}>
-                {profile.redFlags.map((flag, i) => (
-                  <View key={i} style={styles.flagRow}>
-                    <View style={styles.dotRed} />
-                    <Text style={styles.flagText}>{flag}</Text>
+              {/* 6. Red flags */}
+              {profile.redFlags.length > 0 && (
+                <View style={styles.flagCardRed}>
+                  <View style={styles.flagCardHeader}>
+                    <View style={styles.flagHeaderDotRed} />
+                    <Text style={styles.flagCardTitleRed}>Red Flags</Text>
                   </View>
-                ))}
-              </View>
-            )}
+                  {profile.redFlags.map((flag, i) => (
+                    <View key={i} style={styles.flagItem}>
+                      <View style={styles.dotRed} />
+                      <Text style={styles.flagText}>{flag}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              {/* 7. Next Profile button */}
+              <TouchableOpacity
+                style={styles.nextBtn}
+                onPress={handleNext}
+                activeOpacity={0.85}>
+                <LinearGradient
+                  colors={['#ff6b84', '#ff4d6d', '#e03055']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.nextBtnGrad}>
+                  <Text style={styles.nextBtnText}>
+                    {state.index >= GAME_SIZE - 1 ? 'See Results 🎉' : 'Next Profile →'}
+                  </Text>
+                </LinearGradient>
+              </TouchableOpacity>
+
+            </View>
           </ScrollView>
-
-          {/* Fixed footer — Next button */}
-          <View style={[styles.revealFooter, { paddingBottom: Math.max(bottomPadding, 12) }]}>
-            <TouchableOpacity
-              style={styles.nextBtn}
-              onPress={handleNext}
-              activeOpacity={0.85}>
-              <LinearGradient
-                colors={['#ff6b84', '#ff4d6d', '#e03055']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.nextBtnGrad}>
-                <Text style={styles.nextBtnText}>
-                  {state.index >= GAME_SIZE - 1 ? 'See Results 🎉' : 'Next Profile →'}
-                </Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
         </Animated.View>
       )}
     </View>
@@ -704,104 +737,138 @@ const styles = StyleSheet.create({
     letterSpacing: 2.5,
   },
 
-  // ── Reveal phase ────────────────────────────────────────────────────────────
+  // ── Reveal phase ─────────────────────────────────────────────────────────────
   revealArea: {
     flex: 1,
-    flexDirection: 'column',
+  },
+  revealScroll: {
+    flex: 1,
+  },
+  // Centres the reveal card with matching gutters to the gameplay screen.
+  revealScrollContent: {
+    alignItems: 'center',
+    paddingTop: 16,
+    paddingHorizontal: 24,
   },
 
-  // Result banner
-  revealBanner: {
+  // The reveal card — identical width, radius, background, and shadow treatment
+  // as the profile card so both screens feel like the same design system.
+  revealCard: {
+    width: CARD_WIDTH,
+    backgroundColor: '#111319',
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    shadowOffset: { width: 0, height: 14 },
+    shadowOpacity: 0.50,
+    shadowRadius: 30,
+    elevation: 20,
+    padding: 22,
+    gap: 14,
     alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingTop: 22,
-    paddingBottom: 20,
-    gap: 9,
-    overflow: 'hidden',
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(255,255,255,0.07)',
   },
-  revealEmoji: {
-    fontSize: 50,
-  },
-  revealTitle: {
-    color: '#fff',
-    fontSize: 20,
-    fontWeight: '800',
-    textAlign: 'center',
-    letterSpacing: -0.3,
-    lineHeight: 27,
-  },
-  revealMeta: {
-    flexDirection: 'row',
+
+  // 1. Result icon — coloured circle
+  resultIconWrap: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     alignItems: 'center',
-    gap: 10,
-    flexWrap: 'wrap',
     justifyContent: 'center',
+    marginTop: 4,
   },
-  pointsPill: {
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 7,
+  resultIconGreen: {
+    backgroundColor: 'rgba(34,197,94,0.12)',
+    borderWidth: 2,
+    borderColor: 'rgba(34,197,94,0.40)',
+  },
+  resultIconRed: {
+    backgroundColor: 'rgba(232,25,60,0.12)',
+    borderWidth: 2,
+    borderColor: 'rgba(232,25,60,0.40)',
+  },
+  resultIconTxt: {
+    fontSize: 34,
+    fontWeight: '900',
+  },
+  resultIconTxtGreen: { color: '#4ade80' },
+  resultIconTxtRed:   { color: '#ff4d6d' },
+
+  // 2. Title
+  resultTitle: {
+    color: '#fff',
+    fontSize: 26,
+    fontWeight: '900',
+    letterSpacing: -0.6,
+    textAlign: 'center',
+  },
+
+  // What the player did (smaller, dimmed)
+  resultSubtitle: {
+    color: 'rgba(255,255,255,0.38)',
+    fontSize: 13,
+    textAlign: 'center',
+    marginTop: -6,
+  },
+
+  // 3. Score pill
+  scorePill: {
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    borderRadius: 14,
     borderWidth: 1,
   },
-  pointsPillGreen: {
+  scorePillGreen: {
     backgroundColor: 'rgba(34,197,94,0.10)',
-    borderColor: 'rgba(34,197,94,0.32)',
+    borderColor: 'rgba(34,197,94,0.30)',
   },
-  pointsPillRed: {
+  scorePillRed: {
     backgroundColor: 'rgba(232,25,60,0.10)',
-    borderColor: 'rgba(232,25,60,0.32)',
+    borderColor: 'rgba(232,25,60,0.30)',
   },
-  pointsVal: {
-    fontSize: 18,
-    fontWeight: '800',
-    letterSpacing: 0.3,
+  scoreChangeNum: {
+    fontSize: 26,
+    fontWeight: '900',
+    letterSpacing: -0.5,
   },
-  pointsValGreen: { color: '#4ade80' },
-  pointsValRed: { color: '#ff4d6d' },
-  comboPill: {
-    backgroundColor: 'rgba(255,152,0,0.12)',
+  scoreChangeGreen: { color: '#4ade80' },
+  scoreChangeRed:   { color: '#ff4d6d' },
+
+  // Combo bonus badge
+  comboBadge: {
+    backgroundColor: 'rgba(255,152,0,0.10)',
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: 'rgba(255,152,0,0.35)',
-    paddingHorizontal: 12,
+    borderColor: 'rgba(255,152,0,0.28)',
+    paddingHorizontal: 14,
     paddingVertical: 6,
   },
-  comboText: {
+  comboBadgeTxt: {
     color: '#ff9800',
     fontSize: 13,
     fontWeight: '700',
   },
 
-  // Scrollable content
-  revealScroll: {
-    flex: 1,
-  },
-  revealScrollContent: {
-    paddingHorizontal: 16,
-    paddingTop: 14,
-    paddingBottom: 10,
-    gap: 10,
+  // Divider — full width of card
+  revealDivider: {
+    width: '100%',
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: 'rgba(255,255,255,0.10)',
   },
 
-  // Reason panel — no label, just the italic verdict text
-  reasonPanel: {
-    backgroundColor: '#111318',
-    borderRadius: 18,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.07)',
-  },
-  reasonText: {
-    color: 'rgba(255,255,255,0.78)',
+  // 4. Explanation — italic, centred
+  explanationText: {
+    color: 'rgba(255,255,255,0.72)',
     fontSize: 14.5,
     lineHeight: 23,
     fontStyle: 'italic',
+    textAlign: 'center',
+    paddingHorizontal: 4,
   },
 
-  // Flag groups — left accent border, dot markers, no section headers
-  flagGroupGreen: {
+  // 5+6. Flag cards — same left-border treatment, full width within reveal card
+  flagCardGreen: {
+    width: '100%',
     backgroundColor: 'rgba(34,197,94,0.05)',
     borderRadius: 16,
     padding: 14,
@@ -811,7 +878,8 @@ const styles = StyleSheet.create({
     borderLeftWidth: 3,
     borderLeftColor: '#22c55e',
   },
-  flagGroupRed: {
+  flagCardRed: {
+    width: '100%',
     backgroundColor: 'rgba(232,25,60,0.05)',
     borderRadius: 16,
     padding: 14,
@@ -821,26 +889,58 @@ const styles = StyleSheet.create({
     borderLeftWidth: 3,
     borderLeftColor: '#e8193c',
   },
-  dotGreen: {
+  flagCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    marginBottom: 2,
+  },
+  flagHeaderDotGreen: {
     width: 7,
     height: 7,
     borderRadius: 3.5,
+    backgroundColor: '#22c55e',
+  },
+  flagHeaderDotRed: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: '#e8193c',
+  },
+  flagCardTitleGreen: {
+    color: '#4ade80',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
+  },
+  flagCardTitleRed: {
+    color: '#ff4d6d',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
+  },
+  flagItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+  },
+  dotGreen: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
     backgroundColor: '#22c55e',
     marginTop: 7,
     flexShrink: 0,
   },
   dotRed: {
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
     backgroundColor: '#e8193c',
     marginTop: 7,
     flexShrink: 0,
-  },
-  flagRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 10,
   },
   flagText: {
     color: 'rgba(255,255,255,0.75)',
@@ -849,19 +949,17 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
-  // Footer — Next button
-  revealFooter: {
-    paddingHorizontal: 16,
-    paddingTop: 10,
-  },
+  // 7. Next button — full width of reveal card, same pink gradient as home CTA
   nextBtn: {
+    width: '100%',
     borderRadius: 16,
     overflow: 'hidden',
     shadowColor: '#ff4d6d',
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.50,
+    shadowOpacity: 0.45,
     shadowRadius: 16,
     elevation: 10,
+    marginTop: 4,
   },
   nextBtnGrad: {
     paddingVertical: 18,
