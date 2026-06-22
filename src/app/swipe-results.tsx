@@ -187,8 +187,10 @@ export default function SwipeResultsScreen() {
   const wrong           = GAME_SIZE - correct;
   const rank            = getRank(correct);
 
-  const rawCategoryResults: Record<string, { seen: number; correct: number }> =
-    categoryResultsParam ? JSON.parse(categoryResultsParam) : {};
+  let rawCategoryResults: Record<string, { seen: number; correct: number }> = {};
+  try {
+    if (categoryResultsParam) rawCategoryResults = JSON.parse(categoryResultsParam);
+  } catch { /* corrupted params — show results without category breakdown */ }
   const categoryStats: CatStat[] = Object.entries(rawCategoryResults)
     .map(([key, val]) => ({ key: key as ProfileCategory, seen: val.seen, correct: val.correct }))
     .sort((a, b) => b.seen - a.seen || b.correct - a.correct);

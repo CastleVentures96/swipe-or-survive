@@ -474,7 +474,7 @@ export default function SwipeGameScreen() {
             {/* First-card hint — only shown on card 1 */}
             {state.index === 0 && (
               <Text style={styles.hintBanner}>
-                💚 Date the good ones · ✕ Pass on the red flags
+                {'← Swipe left to PASS · Swipe right to DATE →\nor tap the buttons above'}
               </Text>
             )}
 
