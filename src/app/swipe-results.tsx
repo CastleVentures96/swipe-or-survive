@@ -1,7 +1,11 @@
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useState } from 'react';
+import { Dimensions, Platform, ScrollView, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CATEGORY_META, type ProfileCategory } from '@/data/profile-categories';
 
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const CARD_WIDTH = Math.min(520, SCREEN_WIDTH - 32);
 const GAME_SIZE = 20;
 
 interface Rank {
@@ -9,6 +13,22 @@ interface Rank {
   emoji: string;
   description: string;
   color: string;
+}
+
+function buildShareText(
+  rankTitle: string,
+  rankEmoji: string,
+  score: number,
+  correct: number,
+  bestStreak: number,
+): string {
+  const scorePart = `${score > 0 ? '+' : ''}${score} pts`;
+  const streakPart = bestStreak >= 3 ? ` · 🔥 ${bestStreak} streak` : '';
+  return (
+    `I got "${rankTitle}" in Swipe or Survive ${rankEmoji}\n` +
+    `${correct}/20 correct · ${scorePart}${streakPart}\n` +
+    `Can you do better? 🚩`
+  );
 }
 
 function getStreakSummary(bestStreak: number): string {
@@ -25,8 +45,7 @@ function getRank(correct: number): Rank {
     return {
       title: 'Untouchable',
       emoji: '🛡️',
-      description:
-        "You spotted the red flags AND gave the good ones a chance. Peak dating intelligence. Apps should pay you for consultancy.",
+      description: "You spotted the red flags AND gave the good ones a chance. Peak dating intelligence. Apps should pay you for consultancy.",
       color: '#4caf50',
     };
   }
@@ -34,8 +53,7 @@ function getRank(correct: number): Rank {
     return {
       title: 'Red Flag Radar',
       emoji: '🔍',
-      description:
-        "Solid. You can smell a walking disaster from across the bar — and you didn't ghost the decent ones either. A few slipped past but you'll survive.",
+      description: "Solid. You can smell a walking disaster from across the bar — and you didn't ghost the decent ones either. A few slipped past but you'll survive.",
       color: '#2196f3',
     };
   }
@@ -43,8 +61,7 @@ function getRank(correct: number): Rank {
     return {
       title: 'Questionable Taste',
       emoji: '🤔',
-      description:
-        "You know some red flags but you're also absolutely going to end up with someone who has a 'Backup Options' folder or reject every good person out of paranoia.",
+      description: "You know some red flags but you're also absolutely going to end up with someone who has a 'Backup Options' folder or reject every good person out of paranoia.",
       color: '#ff9800',
     };
   }
@@ -52,16 +69,14 @@ function getRank(correct: number): Rank {
     return {
       title: "This Is Why You're Single",
       emoji: '😬',
-      description:
-        "You missed most of the red flags AND passed on the decent ones. Have you considered that the problem might be the person swiping?",
+      description: "You missed most of the red flags AND passed on the decent ones. Have you considered that the problem might be the person swiping?",
       color: '#ff7043',
     };
   }
   return {
     title: 'Walking Red Flag',
     emoji: '🚩',
-    description:
-      "You dated the chaos, ghosted the kind ones, and called it intuition. You ARE the red flag. Therapy. Now.",
+    description: "You dated the chaos, ghosted the kind ones, and called it intuition. You ARE the red flag. Therapy. Now.",
     color: '#ff4d6d',
   };
 }
@@ -80,7 +95,6 @@ function getCategoryQuip(key: ProfileCategory, seen: number, correct: number): s
     if (correct === 1) return `You handled the only ${meta.plural} you met. Barely counts, but we'll take it.`;
     return `One ${key} showed up and took you out completely. Embarrassing.`;
   }
-
   if (pct === 100) {
     const lines: Record<string, string> = {
       Crypto:       "Zero crypto losses. You have been burned before and you remembered.",
@@ -101,7 +115,6 @@ function getCategoryQuip(key: ProfileCategory, seen: number, correct: number): s
     };
     return lines[key] ?? `Flawless on ${meta.plural}. That category had no chance.`;
   }
-
   if (pct === 0) {
     const lines: Record<string, string> = {
       Crypto:       `${seen} Crypto Bros. ${seen} times you fell for it. The blockchain is laughing.`,
@@ -122,7 +135,6 @@ function getCategoryQuip(key: ProfileCategory, seen: number, correct: number): s
     };
     return lines[key] ?? `0 from ${seen} on ${meta.plural}. That category has your number.`;
   }
-
   if (pct >= 75) return `Mostly solid on ${meta.plural}. ${seen - correct} got through the filter.`;
   if (pct >= 50) return `Even odds on ${meta.plural}. They had you half the time.`;
   return `${meta.plural} played you more often than not. ${correct} from ${seen}.`;
@@ -130,34 +142,25 @@ function getCategoryQuip(key: ProfileCategory, seen: number, correct: number): s
 
 function generateHeadlines(stats: CatStat[]): string[] {
   const lines: string[] = [];
-
   const mostSeen = [...stats].sort((a, b) => b.seen - a.seen)[0];
   if (mostSeen) {
-    const meta = CATEGORY_META[mostSeen.key];
-    lines.push(`You survived ${mostSeen.seen} ${meta.plural}`);
+    lines.push(`You survived ${mostSeen.seen} ${CATEGORY_META[mostSeen.key].plural}`);
   }
-
   const perfect = stats.filter((s) => s.seen > 1 && s.correct === s.seen);
   if (perfect.length > 0) {
-    const meta = CATEGORY_META[perfect[0].key];
-    lines.push(`Flawless read on ${meta.plural} (${perfect[0].correct}/${perfect[0].seen})`);
+    lines.push(`Flawless read on ${CATEGORY_META[perfect[0].key].plural} (${perfect[0].correct}/${perfect[0].seen})`);
   }
-
   const zeroes = stats.filter((s) => s.correct === 0 && s.seen > 0);
   if (zeroes.length > 0) {
-    const meta = CATEGORY_META[zeroes[0].key];
-    lines.push(`${meta.plural} took you out — 0 from ${zeroes[0].seen}`);
+    lines.push(`${CATEGORY_META[zeroes[0].key].plural} took you out — 0 from ${zeroes[0].seen}`);
   }
-
   const highAccuracy = stats
     .filter((s) => s.seen >= 2 && s.correct / s.seen >= 0.67 && s.correct < s.seen)
     .sort((a, b) => b.correct / b.seen - a.correct / a.seen)[0];
   if (highAccuracy && lines.length < 3) {
-    const meta = CATEGORY_META[highAccuracy.key];
     const pct = Math.round((highAccuracy.correct / highAccuracy.seen) * 100);
-    lines.push(`You identified ${pct}% of ${meta.plural}`);
+    lines.push(`You identified ${pct}% of ${CATEGORY_META[highAccuracy.key].plural}`);
   }
-
   return lines.slice(0, 3);
 }
 
@@ -177,532 +180,491 @@ export default function SwipeResultsScreen() {
   }>();
   const router = useRouter();
 
-  const score = parseInt(scoreParam ?? '0', 10);
-  const correct = parseInt(correctParam ?? '0', 10);
-  const bestStreak = parseInt(bestStreakParam ?? '0', 10);
+  const score           = parseInt(scoreParam           ?? '0', 10);
+  const correct         = parseInt(correctParam         ?? '0', 10);
+  const bestStreak      = parseInt(bestStreakParam      ?? '0', 10);
   const totalComboBonus = parseInt(totalComboBonusParam ?? '0', 10);
-  const wrong = GAME_SIZE - correct;
-  const rank = getRank(correct);
+  const wrong           = GAME_SIZE - correct;
+  const rank            = getRank(correct);
 
   const rawCategoryResults: Record<string, { seen: number; correct: number }> =
     categoryResultsParam ? JSON.parse(categoryResultsParam) : {};
-
   const categoryStats: CatStat[] = Object.entries(rawCategoryResults)
     .map(([key, val]) => ({ key: key as ProfileCategory, seen: val.seen, correct: val.correct }))
     .sort((a, b) => b.seen - a.seen || b.correct - a.correct);
-
   const headlines = generateHeadlines(categoryStats);
 
-  const tiers = [
-    { label: 'Untouchable', range: '18–20 correct', color: '#4caf50' },
-    { label: 'Red Flag Radar', range: '14–17 correct', color: '#2196f3' },
-    { label: 'Questionable Taste', range: '10–13 correct', color: '#ff9800' },
-    { label: "This Is Why You're Single", range: '5–9 correct', color: '#ff7043' },
-    { label: 'Walking Red Flag', range: '0–4 correct', color: '#ff4d6d' },
-  ];
+  const insets = useSafeAreaInsets();
+  const [copied, setCopied] = useState(false);
+  const [showFullBreakdown, setShowFullBreakdown] = useState(false);
+
+  async function handleShare() {
+    const text = buildShareText(rank.title, rank.emoji, score, correct, bestStreak);
+    if (Platform.OS === 'web') {
+      try {
+        await navigator.clipboard.writeText(text);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2500);
+      } catch { /* unavailable */ }
+    } else {
+      try {
+        await Share.share({ message: text });
+      } catch { /* cancelled */ }
+    }
+  }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.heading}>Game Over</Text>
-      <Text style={styles.subheading}>Here's your damage</Text>
+    <ScrollView
+      style={styles.scroll}
+      contentContainerStyle={[
+        styles.scrollContent,
+        {
+          paddingTop:    Math.max(40, insets.top + 16),
+          paddingBottom: Math.max(40, insets.bottom + 24),
+        },
+      ]}
+      showsVerticalScrollIndicator={false}>
 
-      {/* Rank card */}
-      <View style={[styles.rankCard, { borderColor: rank.color }]}>
-        <Text style={styles.rankEmoji}>{rank.emoji}</Text>
-        <Text style={[styles.rankTitle, { color: rank.color }]}>{rank.title}</Text>
-        <Text style={styles.rankDescription}>{rank.description}</Text>
-      </View>
+      {/* ── Single centered results card ─────────────────────────────── */}
+      <View style={[styles.card, { shadowColor: rank.color }]}>
 
-      {/* Stats row */}
-      <View style={styles.statsRow}>
-        <View style={styles.statCard}>
-          <Text style={styles.statValue}>{score > 0 ? '+' : ''}{score}</Text>
-          <Text style={styles.statLabel}>Score</Text>
-        </View>
-        <View style={[styles.statCard, styles.statCardGreen]}>
-          <Text style={[styles.statValue, styles.statGreen]}>{correct}</Text>
-          <Text style={styles.statLabel}>Correct ✅</Text>
-        </View>
-        <View style={[styles.statCard, styles.statCardRed]}>
-          <Text style={[styles.statValue, styles.statRed]}>{wrong}</Text>
-          <Text style={styles.statLabel}>Wrong ❌</Text>
-        </View>
-      </View>
-
-      {/* Streak stat */}
-      <View style={styles.streakCard}>
-        <View style={styles.streakRow}>
-          <Text style={styles.streakRowEmoji}>🔥</Text>
-          <Text style={styles.streakRowLabel}>
-            Best streak:{' '}
-            <Text style={styles.streakRowValue}>{bestStreak > 0 ? `${bestStreak} in a row` : 'none'}</Text>
-          </Text>
-          {bestStreak >= 10 && (
-            <View style={styles.streakMilestoneBadge}>
-              <Text style={styles.streakMilestoneTxt}>UNSTOPPABLE</Text>
-            </View>
-          )}
-          {bestStreak >= 5 && bestStreak < 10 && (
-            <View style={styles.streakMilestoneBadge}>
-              <Text style={styles.streakMilestoneTxt}>ON FIRE</Text>
-            </View>
-          )}
-          {bestStreak >= 3 && bestStreak < 5 && (
-            <View style={styles.streakMilestoneBadge}>
-              <Text style={styles.streakMilestoneTxt}>HAT TRICK</Text>
-            </View>
-          )}
-        </View>
-        <Text style={styles.streakSummary}>{getStreakSummary(bestStreak)}</Text>
-      </View>
-
-      {/* Combo bonus total */}
-      {totalComboBonus > 0 && (
-        <View style={styles.comboBonusRow}>
-          <Text style={styles.comboBonusEmoji}>⚡</Text>
-          <Text style={styles.comboBonusLabel}>
-            Streak bonuses earned:{' '}
-            <Text style={styles.comboBonusValue}>+{totalComboBonus} pts</Text>
-          </Text>
-        </View>
-      )}
-
-      {/* Category breakdown */}
-      {categoryStats.length > 0 && (
-        <View style={styles.categorySection}>
-          <Text style={styles.sectionTitle}>📊 Category Breakdown</Text>
-
-          {/* Headline callouts */}
-          {headlines.length > 0 && (
-            <View style={styles.headlinesCard}>
-              {headlines.map((line, i) => (
-                <View key={i} style={[styles.headlineLine, i > 0 && styles.headlineLineBorder]}>
-                  <Text style={styles.headlineText}>{line}</Text>
-                </View>
-              ))}
-            </View>
-          )}
-
-          {/* Per-category rows */}
-          {categoryStats.map((stat) => {
-            const meta = CATEGORY_META[stat.key];
-            if (!meta) return null;
-            const pct = Math.round((stat.correct / stat.seen) * 100);
-            const isGood = pct >= 67;
-            const isBad = pct < 40;
-            const quip = getCategoryQuip(stat.key, stat.seen, stat.correct);
-            return (
-              <View key={stat.key} style={styles.catRow}>
-                <View style={styles.catHeader}>
-                  <Text style={styles.catEmoji}>{meta.emoji}</Text>
-                  <Text style={styles.catLabel}>{meta.plural}</Text>
-                  <View style={[
-                    styles.catBadge,
-                    isGood ? styles.catBadgeGood : isBad ? styles.catBadgeBad : styles.catBadgeMid,
-                  ]}>
-                    <Text style={[
-                      styles.catBadgeText,
-                      isGood ? styles.catTextGood : isBad ? styles.catTextBad : styles.catTextMid,
-                    ]}>
-                      {stat.correct}/{stat.seen}
-                    </Text>
-                  </View>
-                </View>
-                {/* Progress bar */}
-                <View style={styles.catBar}>
-                  <View style={[
-                    styles.catBarFill,
-                    { width: `${pct}%` as `${number}%` },
-                    isGood ? styles.catBarGood : isBad ? styles.catBarBad : styles.catBarMid,
-                  ]} />
-                </View>
-                <Text style={styles.catQuip}>{quip}</Text>
-              </View>
-            );
-          })}
-        </View>
-      )}
-
-      {/* Rank ladder */}
-      <View style={styles.ladderCard}>
-        <Text style={styles.ladderTitle}>Rank Ladder</Text>
-        {tiers.map((tier) => (
-          <View
-            key={tier.label}
-            style={[styles.ladderRow, rank.title === tier.label && styles.ladderRowActive]}>
-            <View style={[styles.dot, { backgroundColor: tier.color }]} />
-            <Text style={[styles.ladderLabel, rank.title === tier.label && styles.ladderLabelActive]}>
-              {tier.label}
-            </Text>
-            <Text style={styles.ladderRange}>{tier.range}</Text>
+        {/* 1 + 2. Game Over / Rank */}
+        <View style={styles.rankHeader}>
+          <View style={[styles.emojiRing, { borderColor: rank.color + '55', backgroundColor: rank.color + '18' }]}>
+            <Text style={styles.rankEmoji}>{rank.emoji}</Text>
           </View>
-        ))}
+          <Text style={styles.gameOverLabel}>GAME OVER</Text>
+          <Text style={[styles.rankTitle, { color: rank.color }]}>{rank.title}</Text>
+        </View>
+
+        {/* 3. Verdict */}
+        <Text style={styles.verdict}>{rank.description}</Text>
+
+        <View style={styles.divider} />
+
+        {/* 4. Score */}
+        <View style={styles.scoreBlock}>
+          <Text style={styles.scoreNumber}>{score > 0 ? '+' : ''}{score}</Text>
+          <Text style={styles.scoreUnit}>points</Text>
+        </View>
+
+        {/* 5. Correct / Wrong */}
+        <View style={styles.chipRow}>
+          <View style={[styles.chip, styles.chipGreen]}>
+            <Text style={[styles.chipNum, styles.textGreen]}>{correct}</Text>
+            <Text style={styles.chipLabel}>correct ✅</Text>
+          </View>
+          <View style={[styles.chip, styles.chipRed]}>
+            <Text style={[styles.chipNum, styles.textRed]}>{wrong}</Text>
+            <Text style={styles.chipLabel}>wrong ❌</Text>
+          </View>
+        </View>
+
+        {/* 6. Best streak */}
+        <View style={styles.metaRow}>
+          <Text style={styles.metaLabel}>Best streak</Text>
+          <Text style={styles.metaValue}>
+            {bestStreak > 0 ? `🔥 ${bestStreak} in a row` : 'none'}
+          </Text>
+        </View>
+        {bestStreak >= 2 && (
+          <Text style={styles.streakQuip}>{getStreakSummary(bestStreak)}</Text>
+        )}
+
+        {/* 7. Combo bonus */}
+        {totalComboBonus > 0 && (
+          <View style={styles.metaRow}>
+            <Text style={styles.metaLabel}>Streak bonuses</Text>
+            <Text style={[styles.metaValue, styles.textCombo]}>⚡ +{totalComboBonus} pts</Text>
+          </View>
+        )}
+
+        <View style={styles.divider} />
+
+        {/* 8. Top 3 category highlights */}
+        {headlines.length > 0 && (
+          <View style={styles.highlightsSection}>
+            <Text style={styles.sectionLabel}>📊 CATEGORY HIGHLIGHTS</Text>
+            {headlines.map((line, i) => (
+              <View key={i} style={styles.highlightRow}>
+                <View style={styles.highlightDot} />
+                <Text style={styles.highlightText}>{line}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* Full breakdown (expanded) */}
+        {showFullBreakdown && categoryStats.length > 0 && (
+          <View style={styles.fullBreakdown}>
+            {categoryStats.map((stat) => {
+              const meta = CATEGORY_META[stat.key];
+              if (!meta) return null;
+              const pct    = Math.round((stat.correct / stat.seen) * 100);
+              const isGood = pct >= 67;
+              const isBad  = pct < 40;
+              const quip   = getCategoryQuip(stat.key, stat.seen, stat.correct);
+              return (
+                <View key={stat.key} style={styles.catRow}>
+                  <View style={styles.catRowHeader}>
+                    <Text style={styles.catEmoji}>{meta.emoji}</Text>
+                    <Text style={styles.catName}>{meta.plural}</Text>
+                    <View style={[styles.catBadge, isGood ? styles.badgeGood : isBad ? styles.badgeBad : styles.badgeMid]}>
+                      <Text style={[styles.catBadgeText, isGood ? styles.textGood : isBad ? styles.textBad : styles.textMid]}>
+                        {stat.correct}/{stat.seen}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={styles.catBar}>
+                    <View style={[
+                      styles.catBarFill,
+                      { width: `${pct}%` as `${number}%` },
+                      isGood ? styles.barGood : isBad ? styles.barBad : styles.barMid,
+                    ]} />
+                  </View>
+                  <Text style={styles.catQuip}>{quip}</Text>
+                </View>
+              );
+            })}
+          </View>
+        )}
+
+        {/* 9. Show Full Breakdown toggle */}
+        {categoryStats.length > 0 && (
+          <TouchableOpacity
+            style={styles.expandBtn}
+            onPress={() => setShowFullBreakdown((v) => !v)}
+            activeOpacity={0.7}>
+            <Text style={styles.expandBtnText}>
+              {showFullBreakdown ? 'Hide Breakdown ↑' : 'Show Full Breakdown ↓'}
+            </Text>
+          </TouchableOpacity>
+        )}
+
+        <View style={styles.divider} />
+
+        {/* 10. Play Again */}
+        <TouchableOpacity
+          style={styles.primaryBtn}
+          onPress={() => router.replace('/swipe-game')}
+          activeOpacity={0.85}>
+          <Text style={styles.primaryBtnText}>Play Again 🔄</Text>
+        </TouchableOpacity>
+
+        {/* 11. Share Result */}
+        <TouchableOpacity
+          style={styles.shareBtn}
+          onPress={handleShare}
+          activeOpacity={0.85}>
+          <Text style={styles.shareBtnText}>
+            {copied ? 'Copied! ✓' : 'Share Result 📤'}
+          </Text>
+        </TouchableOpacity>
+
+        {/* 12. Back to Home */}
+        <TouchableOpacity
+          style={styles.ghostBtn}
+          onPress={() => router.replace('/')}
+          activeOpacity={0.7}>
+          <Text style={styles.ghostBtnText}>Back to Home</Text>
+        </TouchableOpacity>
+
       </View>
-
-      {/* Buttons */}
-      <TouchableOpacity
-        style={styles.primaryBtn}
-        onPress={() => router.replace('/swipe-game')}
-        activeOpacity={0.8}>
-        <Text style={styles.primaryBtnText}>Play Again 🔄</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={styles.secondaryBtn}
-        onPress={() => router.replace('/')}
-        activeOpacity={0.8}>
-        <Text style={styles.secondaryBtnText}>Back to Home</Text>
-      </TouchableOpacity>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  scroll: {
     flex: 1,
-    backgroundColor: '#121212',
+    backgroundColor: '#0a0a0a',
   },
-  content: {
-    padding: 20,
-    paddingTop: 60,
-    paddingBottom: 48,
+  scrollContent: {
     alignItems: 'center',
-    gap: 16,
-  },
-  heading: {
-    color: '#fff',
-    fontSize: 36,
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
-  subheading: {
-    color: '#888',
-    fontSize: 16,
-    marginTop: -8,
+    paddingHorizontal: 16,
   },
 
-  // ── Rank card ──────────────────────────────────────────────────────────────
-  rankCard: {
-    backgroundColor: '#1c1c1c',
-    borderRadius: 20,
-    padding: 28,
+  // ── Main card — matches the gameplay profile card aesthetic ───────────────
+  card: {
+    width: CARD_WIDTH,
+    backgroundColor: '#111319',
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    shadowOffset: { width: 0, height: 14 },
+    shadowOpacity: 0.50,
+    shadowRadius: 30,
+    elevation: 20,
+    padding: 24,
+    gap: 14,
+  },
+
+  // 1+2. Rank header
+  rankHeader: {
     alignItems: 'center',
+    gap: 6,
+  },
+  emojiRing: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
     borderWidth: 2,
-    width: '100%',
-  },
-  rankEmoji: {
-    fontSize: 60,
-    marginBottom: 12,
-  },
-  rankTitle: {
-    fontSize: 26,
-    fontWeight: 'bold',
-    marginBottom: 10,
-    textAlign: 'center',
-  },
-  rankDescription: {
-    color: '#bbb',
-    fontSize: 15,
-    lineHeight: 22,
-    textAlign: 'center',
-  },
-
-  // ── Stats row ──────────────────────────────────────────────────────────────
-  statsRow: {
-    flexDirection: 'row',
-    gap: 10,
-    width: '100%',
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: '#1c1c1c',
-    borderRadius: 14,
-    padding: 16,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#2a2a2a',
-  },
-  statCardGreen: {
-    borderColor: '#2e4a2e',
-    backgroundColor: '#0a1f0a',
-  },
-  statCardRed: {
-    borderColor: '#4a2e2e',
-    backgroundColor: '#1f0a0a',
-  },
-  statValue: {
-    color: '#fff',
-    fontSize: 28,
-    fontWeight: 'bold',
-  },
-  statGreen: {
-    color: '#4caf50',
-  },
-  statRed: {
-    color: '#ff4d6d',
-  },
-  statLabel: {
-    color: '#888',
-    fontSize: 12,
-    marginTop: 2,
-  },
-
-  // ── Streak card ────────────────────────────────────────────────────────────
-  streakCard: {
-    backgroundColor: '#1a1000',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#4a3000',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    width: '100%',
-    gap: 8,
-  },
-  streakRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  streakRowEmoji: {
-    fontSize: 22,
-  },
-  streakRowLabel: {
-    color: '#888',
-    fontSize: 14,
-    flex: 1,
-  },
-  streakRowValue: {
-    color: '#ff9800',
-    fontWeight: '700',
-  },
-  streakMilestoneBadge: {
-    backgroundColor: '#2b1a00',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#e67e00',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  streakMilestoneTxt: {
-    color: '#ffcc02',
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 1,
-  },
-  streakSummary: {
-    color: '#666',
-    fontSize: 13,
-    lineHeight: 19,
-    fontStyle: 'italic',
-  },
-
-  // ── Combo bonus row ────────────────────────────────────────────────────────
-  comboBonusRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: '#0f0f1a',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#2a2a50',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    width: '100%',
-  },
-  comboBonusEmoji: {
-    fontSize: 20,
-  },
-  comboBonusLabel: {
-    color: '#888',
-    fontSize: 14,
-    flex: 1,
-  },
-  comboBonusValue: {
-    color: '#a78bfa',
-    fontWeight: '700',
-  },
-
-  // ── Category section ───────────────────────────────────────────────────────
-  categorySection: {
-    width: '100%',
-    gap: 10,
-  },
-  sectionTitle: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '800',
-    letterSpacing: -0.3,
-    marginBottom: 2,
-  },
-
-  headlinesCard: {
-    backgroundColor: '#111',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#222',
-    overflow: 'hidden',
-  },
-  headlineLine: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  headlineLineBorder: {
-    borderTopWidth: 1,
-    borderTopColor: '#1e1e1e',
-  },
-  headlineText: {
-    color: '#e0e0e0',
-    fontSize: 15,
-    fontWeight: '600',
-    letterSpacing: 0.1,
-  },
-
-  catRow: {
-    backgroundColor: '#1a1a1a',
-    borderRadius: 14,
-    padding: 14,
-    gap: 8,
-    borderWidth: 1,
-    borderColor: '#252525',
-  },
-  catHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  catEmoji: {
-    fontSize: 18,
-  },
-  catLabel: {
-    color: '#ddd',
-    fontSize: 14,
-    fontWeight: '700',
-    flex: 1,
-    letterSpacing: 0.1,
-  },
-  catBadge: {
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderWidth: 1,
-  },
-  catBadgeGood: {
-    backgroundColor: '#071407',
-    borderColor: '#2d6a2d',
-  },
-  catBadgeMid: {
-    backgroundColor: '#1a1200',
-    borderColor: '#5a4000',
-  },
-  catBadgeBad: {
-    backgroundColor: '#140707',
-    borderColor: '#6a2d2d',
-  },
-  catBadgeText: {
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  catTextGood: {
-    color: '#4caf50',
-  },
-  catTextMid: {
-    color: '#ff9800',
-  },
-  catTextBad: {
-    color: '#ff4d6d',
-  },
-  catBar: {
-    height: 3,
-    backgroundColor: '#2a2a2a',
-    borderRadius: 2,
-    overflow: 'hidden',
-  },
-  catBarFill: {
-    height: '100%',
-    borderRadius: 2,
-  },
-  catBarGood: {
-    backgroundColor: '#4caf50',
-  },
-  catBarMid: {
-    backgroundColor: '#ff9800',
-  },
-  catBarBad: {
-    backgroundColor: '#ff4d6d',
-  },
-  catQuip: {
-    color: '#666',
-    fontSize: 12,
-    lineHeight: 18,
-    fontStyle: 'italic',
-  },
-
-  // ── Rank ladder ────────────────────────────────────────────────────────────
-  ladderCard: {
-    backgroundColor: '#1c1c1c',
-    borderRadius: 16,
-    padding: 18,
-    width: '100%',
-    borderWidth: 1,
-    borderColor: '#2a2a2a',
-    gap: 8,
-  },
-  ladderTitle: {
-    color: '#888',
-    fontSize: 12,
-    fontWeight: 'bold',
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
+    justifyContent: 'center',
     marginBottom: 4,
   },
-  ladderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    padding: 8,
-    borderRadius: 8,
+  rankEmoji: {
+    fontSize: 34,
   },
-  ladderRowActive: {
-    backgroundColor: '#2a2a2a',
+  gameOverLabel: {
+    color: 'rgba(255,255,255,0.25)',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 2.5,
+    textTransform: 'uppercase',
   },
-  dot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-  },
-  ladderLabel: {
-    color: '#666',
-    fontSize: 13,
-    flex: 1,
-  },
-  ladderLabelActive: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-  ladderRange: {
-    color: '#444',
-    fontSize: 12,
+  rankTitle: {
+    fontSize: 28,
+    fontWeight: '900',
+    letterSpacing: -0.5,
+    textAlign: 'center',
   },
 
-  // ── Buttons ────────────────────────────────────────────────────────────────
+  // 3. Verdict
+  verdict: {
+    color: 'rgba(255,255,255,0.55)',
+    fontSize: 14,
+    lineHeight: 21,
+    textAlign: 'center',
+    fontStyle: 'italic',
+    paddingHorizontal: 4,
+  },
+
+  divider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: 'rgba(255,255,255,0.09)',
+  },
+
+  // 4. Score
+  scoreBlock: {
+    alignItems: 'center',
+    gap: 2,
+  },
+  scoreNumber: {
+    color: '#fff',
+    fontSize: 46,
+    fontWeight: '900',
+    letterSpacing: -1.5,
+    lineHeight: 50,
+  },
+  scoreUnit: {
+    color: 'rgba(255,255,255,0.28)',
+    fontSize: 13,
+    fontWeight: '600',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
+
+  // 5. Correct / Wrong chips
+  chipRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  chip: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    gap: 2,
+  },
+  chipGreen: {
+    backgroundColor: 'rgba(34,197,94,0.08)',
+    borderColor: 'rgba(34,197,94,0.25)',
+  },
+  chipRed: {
+    backgroundColor: 'rgba(232,25,60,0.08)',
+    borderColor: 'rgba(232,25,60,0.25)',
+  },
+  chipNum: {
+    fontSize: 26,
+    fontWeight: '900',
+    letterSpacing: -0.5,
+  },
+  chipLabel: {
+    color: 'rgba(255,255,255,0.35)',
+    fontSize: 11,
+    fontWeight: '600',
+  },
+
+  // 6+7. Meta rows (streak, combo)
+  metaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 2,
+    marginTop: -4,
+  },
+  metaLabel: {
+    color: 'rgba(255,255,255,0.35)',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  metaValue: {
+    color: '#ff9800',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  textGreen: { color: '#4ade80' },
+  textRed:   { color: '#ff4d6d' },
+  textCombo: { color: '#a78bfa' },
+  textGood:  { color: '#4caf50' },
+  textMid:   { color: '#ff9800' },
+  textBad:   { color: '#ff4d6d' },
+
+  streakQuip: {
+    color: 'rgba(255,255,255,0.25)',
+    fontSize: 12,
+    lineHeight: 17,
+    fontStyle: 'italic',
+    textAlign: 'center',
+    marginTop: -6,
+  },
+
+  // 8. Category highlights
+  highlightsSection: {
+    gap: 8,
+  },
+  sectionLabel: {
+    color: 'rgba(255,255,255,0.28)',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1.8,
+    textTransform: 'uppercase',
+    marginBottom: 2,
+  },
+  highlightRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+  },
+  highlightDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: '#ff4d6d',
+    marginTop: 6,
+    flexShrink: 0,
+  },
+  highlightText: {
+    color: 'rgba(255,255,255,0.72)',
+    fontSize: 14,
+    lineHeight: 20,
+    flex: 1,
+  },
+
+  // Full breakdown
+  fullBreakdown: {
+    gap: 8,
+    marginTop: -2,
+  },
+  catRow: {
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderRadius: 12,
+    padding: 12,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+  },
+  catRowHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  catEmoji: { fontSize: 15 },
+  catName: {
+    color: 'rgba(255,255,255,0.80)',
+    fontSize: 13,
+    fontWeight: '700',
+    flex: 1,
+  },
+  catBadge: {
+    borderRadius: 7,
+    paddingHorizontal: 9,
+    paddingVertical: 2,
+    borderWidth: 1,
+  },
+  badgeGood: { backgroundColor: '#071407', borderColor: '#2d6a2d' },
+  badgeMid:  { backgroundColor: '#1a1200', borderColor: '#5a4000' },
+  badgeBad:  { backgroundColor: '#140707', borderColor: '#6a2d2d' },
+  catBadgeText: { fontSize: 12, fontWeight: '800' },
+  catBar: {
+    height: 2,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 1,
+    overflow: 'hidden',
+  },
+  catBarFill:  { height: '100%', borderRadius: 1 },
+  barGood:  { backgroundColor: '#4caf50' },
+  barMid:   { backgroundColor: '#ff9800' },
+  barBad:   { backgroundColor: '#ff4d6d' },
+  catQuip: {
+    color: 'rgba(255,255,255,0.28)',
+    fontSize: 11.5,
+    lineHeight: 16,
+    fontStyle: 'italic',
+  },
+
+  // 9. Expand button
+  expandBtn: {
+    alignSelf: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  expandBtnText: {
+    color: 'rgba(255,255,255,0.30)',
+    fontSize: 12,
+    fontWeight: '600',
+    letterSpacing: 0.3,
+  },
+
+  // 10–12. Buttons
   primaryBtn: {
     backgroundColor: '#ff4d6d',
-    paddingHorizontal: 40,
-    paddingVertical: 15,
-    borderRadius: 12,
-    width: '100%',
+    paddingVertical: 16,
+    borderRadius: 16,
     alignItems: 'center',
+    shadowColor: '#ff4d6d',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.40,
+    shadowRadius: 14,
+    elevation: 8,
   },
   primaryBtnText: {
     color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: 17,
+    fontWeight: '900',
+    letterSpacing: 0.2,
   },
-  secondaryBtn: {
-    paddingVertical: 12,
+  shareBtn: {
+    paddingVertical: 14,
+    borderRadius: 16,
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,77,109,0.38)',
+    backgroundColor: 'rgba(255,77,109,0.06)',
   },
-  secondaryBtnText: {
-    color: '#666',
+  shareBtnText: {
+    color: '#ff4d6d',
     fontSize: 15,
+    fontWeight: '700',
+  },
+  ghostBtn: {
+    alignItems: 'center',
+    paddingVertical: 14,
+  },
+  ghostBtnText: {
+    color: 'rgba(255,255,255,0.22)',
+    fontSize: 13,
   },
 });

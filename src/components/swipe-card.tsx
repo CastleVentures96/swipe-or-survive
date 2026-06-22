@@ -19,12 +19,14 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const SWIPE_THRESHOLD = 80;
 
 // Portrait card — narrow and tall like a real dating profile.
-// Width: 20–30% wider than before; cap at 480 so tablets stay readable.
-// Gutters shrink from 48→40 so narrower phones keep breathing room.
+// Width: gutter of 20px each side; cap at 480 so tablets stay readable.
 export const CARD_WIDTH  = Math.min(480, Math.max(320, SCREEN_WIDTH - 40));
 
-// Height: slightly taller than before; 250px overhead covers header + buttons + safe area.
-export const CARD_HEIGHT = Math.min(720, Math.max(500, Math.round(SCREEN_HEIGHT - 250)));
+// Height: 320px overhead accounts for safe-area insets (top ~44-59pt on iPhone,
+// ~24-48dp on Android), header, gap, buttons, and home-indicator clearance.
+// Verified against iPhone 13 (844), iPhone 15 Pro Max (932),
+// Samsung S23 (851), and Pixel 8 (892) logical heights.
+export const CARD_HEIGHT = Math.min(660, Math.max(460, Math.round(SCREEN_HEIGHT - 320)));
 
 // Card background — clearly distinct from the app's #0a0a0a canvas.
 const CARD_BG = '#111319';

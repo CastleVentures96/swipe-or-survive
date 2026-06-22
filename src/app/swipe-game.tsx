@@ -342,7 +342,7 @@ export default function SwipeGameScreen() {
   }
 
   const headerPaddingTop = insets.top + 10;
-  const bottomPadding = insets.bottom + 4;
+  const bottomPadding = insets.bottom + 10;
 
   return (
     <View style={styles.container}>
@@ -723,7 +723,7 @@ const styles = StyleSheet.create({
 
   // Progress bar
   progressTrack: {
-    height: 3,
+    height: 4,
     backgroundColor: 'rgba(255,255,255,0.07)',
     borderRadius: 2,
     overflow: 'hidden',
