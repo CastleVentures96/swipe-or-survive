@@ -371,6 +371,8 @@ export default function SwipeResultsScreen() {
           <Text style={styles.ghostBtnText}>Back to Home</Text>
         </TouchableOpacity>
 
+        <Text style={styles.versionLabel}>Beta v0.9.0</Text>
+
       </View>
     </ScrollView>
   );
@@ -668,5 +670,12 @@ const styles = StyleSheet.create({
   ghostBtnText: {
     color: 'rgba(255,255,255,0.22)',
     fontSize: 13,
+  },
+  versionLabel: {
+    color: 'rgba(255,255,255,0.10)',
+    fontSize: 11,
+    letterSpacing: 0.5,
+    textAlign: 'center',
+    marginTop: -4,
   },
 });

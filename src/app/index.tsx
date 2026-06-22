@@ -116,6 +116,8 @@ export default function HomeScreen() {
           activeOpacity={0.8}>
           <Text style={styles.secondaryBtnText}>🚩 Red Flag Quiz</Text>
         </TouchableOpacity>
+
+        <Text style={styles.versionLabel}>Beta v0.9.0</Text>
       </View>
     </View>
   );
@@ -276,5 +278,11 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     letterSpacing: 0.2,
+  },
+  versionLabel: {
+    color: 'rgba(255,255,255,0.13)',
+    fontSize: 11,
+    letterSpacing: 0.5,
+    textAlign: 'center',
   },
 });
