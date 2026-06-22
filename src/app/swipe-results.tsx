@@ -622,9 +622,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   expandBtnText: {
-    color: 'rgba(255,255,255,0.30)',
-    fontSize: 12,
-    fontWeight: '600',
+    color: 'rgba(255,255,255,0.65)',
+    fontSize: 13,
+    fontWeight: '700',
     letterSpacing: 0.3,
   },
 

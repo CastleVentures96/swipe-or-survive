@@ -129,6 +129,7 @@ export default function SwipeGameScreen() {
   }));
 
   function triggerScoreFloat(points: number) {
+    if (points === 0) return;
     setScoreFloat({ text: points > 0 ? `+${points}` : `${points}`, pos: points > 0 });
     scoreFloatY.value = 0;
     scoreFloatOpacity.value = 0;
@@ -240,27 +241,29 @@ export default function SwipeGameScreen() {
   }
 
   function handleSwipeLeft() {
-    const isCorrect = profile.correctDecision === 'reject';
-    const newStreak = isCorrect ? state.streak + 1 : 0;
-    const bonus     = isCorrect ? getStreakBonus(newStreak) : 0;
-    const points    = isCorrect ? BASE_CORRECT_PTS + bonus : -BASE_CORRECT_PTS;
+    const isCorrect  = profile.correctDecision === 'reject';
+    const newStreak  = isCorrect ? state.streak + 1 : 0;
+    const bonus      = isCorrect ? getStreakBonus(newStreak) : 0;
+    const points     = isCorrect ? BASE_CORRECT_PTS + bonus : -BASE_CORRECT_PTS;
+    const actualDelta = isCorrect ? points : Math.max(0, state.score + points) - state.score;
     triggerFlash(isCorrect);
     if (!isCorrect) triggerShake();
-    triggerScoreFloat(points);
+    triggerScoreFloat(actualDelta);
     triggerScorePop();
     if (bonus > 0) triggerComboToast(newStreak);
     triggerReveal();
     setState((prev) => {
-      const ns  = isCorrect ? prev.streak + 1 : 0;
-      const b   = isCorrect ? getStreakBonus(ns) : 0;
-      const pts = isCorrect ? BASE_CORRECT_PTS + b : -BASE_CORRECT_PTS;
+      const ns       = isCorrect ? prev.streak + 1 : 0;
+      const b        = isCorrect ? getStreakBonus(ns) : 0;
+      const pts      = isCorrect ? BASE_CORRECT_PTS + b : -BASE_CORRECT_PTS;
+      const newScore = Math.max(0, prev.score + pts);
       return {
         ...prev,
-        score: Math.max(0, prev.score + pts),
+        score: newScore,
         correct: isCorrect ? prev.correct + 1 : prev.correct,
         streak: ns,
         bestStreak: Math.max(ns, prev.streak, prev.bestStreak),
-        lastPoints: pts,
+        lastPoints: newScore - prev.score,
         totalComboBonus: prev.totalComboBonus + b,
         phase: 'reveal',
         swipedRight: false,
@@ -271,27 +274,29 @@ export default function SwipeGameScreen() {
   }
 
   function handleSwipeRight() {
-    const isCorrect = profile.correctDecision === 'date';
-    const newStreak = isCorrect ? state.streak + 1 : 0;
-    const bonus     = isCorrect ? getStreakBonus(newStreak) : 0;
-    const points    = isCorrect ? BASE_CORRECT_PTS + bonus : -BASE_CORRECT_PTS;
+    const isCorrect  = profile.correctDecision === 'date';
+    const newStreak  = isCorrect ? state.streak + 1 : 0;
+    const bonus      = isCorrect ? getStreakBonus(newStreak) : 0;
+    const points     = isCorrect ? BASE_CORRECT_PTS + bonus : -BASE_CORRECT_PTS;
+    const actualDelta = isCorrect ? points : Math.max(0, state.score + points) - state.score;
     triggerFlash(isCorrect);
     if (!isCorrect) triggerShake();
-    triggerScoreFloat(points);
+    triggerScoreFloat(actualDelta);
     triggerScorePop();
     if (bonus > 0) triggerComboToast(newStreak);
     triggerReveal();
     setState((prev) => {
-      const ns  = isCorrect ? prev.streak + 1 : 0;
-      const b   = isCorrect ? getStreakBonus(ns) : 0;
-      const pts = isCorrect ? BASE_CORRECT_PTS + b : -BASE_CORRECT_PTS;
+      const ns       = isCorrect ? prev.streak + 1 : 0;
+      const b        = isCorrect ? getStreakBonus(ns) : 0;
+      const pts      = isCorrect ? BASE_CORRECT_PTS + b : -BASE_CORRECT_PTS;
+      const newScore = Math.max(0, prev.score + pts);
       return {
         ...prev,
-        score: Math.max(0, prev.score + pts),
+        score: newScore,
         correct: isCorrect ? prev.correct + 1 : prev.correct,
         streak: ns,
         bestStreak: Math.max(ns, prev.streak, prev.bestStreak),
-        lastPoints: pts,
+        lastPoints: newScore - prev.score,
         totalComboBonus: prev.totalComboBonus + b,
         phase: 'reveal',
         swipedRight: true,
@@ -330,6 +335,10 @@ export default function SwipeGameScreen() {
   const progressPct = (progress / GAME_SIZE) * 100;
   const lastBonus = state.wasCorrect ? state.lastPoints - BASE_CORRECT_PTS : 0;
 
+  // Badge colour: green when scoring, red when floored (wrongs exist), neutral before first answer
+  const answeredCount = state.phase === 'swiping' ? state.index : state.index + 1;
+  const wrongCount    = answeredCount - state.correct;
+
   function getRevealTitle() {
     if (state.wasCorrect) {
       return state.swipedRight
@@ -356,9 +365,8 @@ export default function SwipeGameScreen() {
           {/* Exit to home */}
           <TouchableOpacity
             onPress={() => router.replace('/')}
-            hitSlop={14}
             style={styles.exitBtn}>
-            <Text style={styles.exitBtnTxt}>✕</Text>
+            <Text style={styles.exitBtnTxt}>←</Text>
           </TouchableOpacity>
 
           {/* Progress counter */}
@@ -377,7 +385,12 @@ export default function SwipeGameScreen() {
           )}
 
           {/* Score */}
-          <Animated.View style={[styles.scoreBadge, state.score < 0 && styles.scoreBadgeNeg, scoreHeaderStyle]}>
+          <Animated.View style={[
+            state.score > 0  ? styles.scoreBadge
+            : wrongCount > 0 ? styles.scoreBadgeNeg
+            : styles.scoreBadgeNeutral,
+            scoreHeaderStyle,
+          ]}>
             <Text style={styles.scoreText}>
               {state.score > 0 ? '+' : ''}{state.score}
             </Text>
@@ -522,11 +535,15 @@ export default function SwipeGameScreen() {
               {/* 3. Score change */}
               <View style={[
                 styles.scorePill,
-                state.wasCorrect ? styles.scorePillGreen : styles.scorePillRed,
+                state.wasCorrect        ? styles.scorePillGreen
+                : state.lastPoints < 0  ? styles.scorePillRed
+                : styles.scorePillNeutral,
               ]}>
                 <Text style={[
                   styles.scoreChangeNum,
-                  state.wasCorrect ? styles.scoreChangeGreen : styles.scoreChangeRed,
+                  state.wasCorrect        ? styles.scoreChangeGreen
+                  : state.lastPoints < 0  ? styles.scoreChangeRed
+                  : styles.scoreChangeNeutral,
                 ]}>
                   {state.lastPoints > 0 ? '+' : ''}{state.lastPoints} pts
                 </Text>
@@ -672,15 +689,18 @@ const styles = StyleSheet.create({
     gap: 10,
   },
 
-  // Exit button
+  // Exit button — 44×44pt minimum touch target (iOS HIG)
   exitBtn: {
-    paddingVertical: 8,
-    paddingHorizontal: 10,
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 12,
   },
   exitBtnTxt: {
     color: '#555',
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 20,
+    fontWeight: '400',
   },
 
   // First-card hint
@@ -755,6 +775,16 @@ const styles = StyleSheet.create({
   scoreBadgeNeg: {
     backgroundColor: 'rgba(232,25,60,0.09)',
     borderColor: 'rgba(232,25,60,0.30)',
+  },
+  scoreBadgeNeutral: {
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    minWidth: 74,
+    alignItems: 'center',
   },
   scoreText: {
     color: '#fff',
@@ -970,13 +1000,18 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(232,25,60,0.10)',
     borderColor: 'rgba(232,25,60,0.30)',
   },
+  scorePillNeutral: {
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderColor: 'rgba(255,255,255,0.14)',
+  },
   scoreChangeNum: {
     fontSize: 26,
     fontWeight: '900',
     letterSpacing: -0.5,
   },
-  scoreChangeGreen: { color: '#4ade80' },
-  scoreChangeRed:   { color: '#ff4d6d' },
+  scoreChangeGreen:   { color: '#4ade80' },
+  scoreChangeRed:     { color: '#ff4d6d' },
+  scoreChangeNeutral: { color: 'rgba(255,255,255,0.38)' },
 
   // Combo bonus badge
   comboBadge: {
