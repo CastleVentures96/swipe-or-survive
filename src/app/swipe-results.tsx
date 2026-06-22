@@ -11,6 +11,15 @@ interface Rank {
   color: string;
 }
 
+function getStreakSummary(bestStreak: number): string {
+  if (bestStreak >= 10) return "Ten in a row. That's not instinct, that's damage paying dividends.";
+  if (bestStreak >= 7)  return "A streak that long means you've been genuinely hurt before. Growth.";
+  if (bestStreak >= 5)  return "Five in a row. You were briefly unstoppable before reality returned.";
+  if (bestStreak >= 3)  return "Hat trick. A glimpse of who you could be if you stayed off apps.";
+  if (bestStreak >= 2)  return "Two in a row. A promising start that went nowhere.";
+  return "No consecutive correct reads. Every wrong choice was a standalone event.";
+}
+
 function getRank(correct: number): Rank {
   if (correct >= 18) {
     return {
@@ -157,11 +166,13 @@ export default function SwipeResultsScreen() {
     score: scoreParam,
     correct: correctParam,
     bestStreak: bestStreakParam,
+    totalComboBonus: totalComboBonusParam,
     categoryResults: categoryResultsParam,
   } = useLocalSearchParams<{
     score: string;
     correct: string;
     bestStreak: string;
+    totalComboBonus: string;
     categoryResults: string;
   }>();
   const router = useRouter();
@@ -169,6 +180,7 @@ export default function SwipeResultsScreen() {
   const score = parseInt(scoreParam ?? '0', 10);
   const correct = parseInt(correctParam ?? '0', 10);
   const bestStreak = parseInt(bestStreakParam ?? '0', 10);
+  const totalComboBonus = parseInt(totalComboBonusParam ?? '0', 10);
   const wrong = GAME_SIZE - correct;
   const rank = getRank(correct);
 
@@ -218,23 +230,40 @@ export default function SwipeResultsScreen() {
       </View>
 
       {/* Streak stat */}
-      {bestStreak >= 2 && (
+      <View style={styles.streakCard}>
         <View style={styles.streakRow}>
           <Text style={styles.streakRowEmoji}>🔥</Text>
           <Text style={styles.streakRowLabel}>
             Best streak:{' '}
-            <Text style={styles.streakRowValue}>{bestStreak} in a row</Text>
+            <Text style={styles.streakRowValue}>{bestStreak > 0 ? `${bestStreak} in a row` : 'none'}</Text>
           </Text>
-          {bestStreak >= 5 && (
-            <View style={styles.streakCombo}>
-              <Text style={styles.streakComboText}>×2 COMBO</Text>
+          {bestStreak >= 10 && (
+            <View style={styles.streakMilestoneBadge}>
+              <Text style={styles.streakMilestoneTxt}>UNSTOPPABLE</Text>
+            </View>
+          )}
+          {bestStreak >= 5 && bestStreak < 10 && (
+            <View style={styles.streakMilestoneBadge}>
+              <Text style={styles.streakMilestoneTxt}>ON FIRE</Text>
             </View>
           )}
           {bestStreak >= 3 && bestStreak < 5 && (
-            <View style={styles.streakCombo}>
-              <Text style={styles.streakComboText}>×1.5 COMBO</Text>
+            <View style={styles.streakMilestoneBadge}>
+              <Text style={styles.streakMilestoneTxt}>HAT TRICK</Text>
             </View>
           )}
+        </View>
+        <Text style={styles.streakSummary}>{getStreakSummary(bestStreak)}</Text>
+      </View>
+
+      {/* Combo bonus total */}
+      {totalComboBonus > 0 && (
+        <View style={styles.comboBonusRow}>
+          <Text style={styles.comboBonusEmoji}>⚡</Text>
+          <Text style={styles.comboBonusLabel}>
+            Streak bonuses earned:{' '}
+            <Text style={styles.comboBonusValue}>+{totalComboBonus} pts</Text>
+          </Text>
         </View>
       )}
 
@@ -418,18 +447,21 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 
-  // ── Streak row ─────────────────────────────────────────────────────────────
-  streakRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  // ── Streak card ────────────────────────────────────────────────────────────
+  streakCard: {
     backgroundColor: '#1a1000',
     borderRadius: 14,
     borderWidth: 1,
     borderColor: '#4a3000',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 14,
     width: '100%',
+    gap: 8,
+  },
+  streakRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   streakRowEmoji: {
     fontSize: 22,
@@ -443,7 +475,7 @@ const styles = StyleSheet.create({
     color: '#ff9800',
     fontWeight: '700',
   },
-  streakCombo: {
+  streakMilestoneBadge: {
     backgroundColor: '#2b1a00',
     borderRadius: 8,
     borderWidth: 1,
@@ -451,11 +483,43 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
-  streakComboText: {
+  streakMilestoneTxt: {
     color: '#ffcc02',
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '800',
-    letterSpacing: 0.5,
+    letterSpacing: 1,
+  },
+  streakSummary: {
+    color: '#666',
+    fontSize: 13,
+    lineHeight: 19,
+    fontStyle: 'italic',
+  },
+
+  // ── Combo bonus row ────────────────────────────────────────────────────────
+  comboBonusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#0f0f1a',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#2a2a50',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    width: '100%',
+  },
+  comboBonusEmoji: {
+    fontSize: 20,
+  },
+  comboBonusLabel: {
+    color: '#888',
+    fontSize: 14,
+    flex: 1,
+  },
+  comboBonusValue: {
+    color: '#a78bfa',
+    fontWeight: '700',
   },
 
   // ── Category section ───────────────────────────────────────────────────────

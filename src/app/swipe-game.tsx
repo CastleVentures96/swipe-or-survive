@@ -20,15 +20,17 @@ import { profileCategories } from '@/data/profile-categories';
 
 const GAME_SIZE = 20;
 const STACK_OFFSET = 12;
+const BASE_CORRECT_PTS = 10;
 
-function getComboMultiplier(streak: number): number {
-  if (streak >= 5) return 2;
-  if (streak >= 3) return 1.5;
-  return 1;
-}
+const STREAK_BONUSES: Record<number, number> = { 3: 5, 5: 10, 10: 25 };
+const STREAK_BONUS_LABELS: Record<number, string> = {
+  3:  '🔥 Hat Trick! +5',
+  5:  '🔥 On Fire! +10',
+  10: '🔥 Unstoppable! +25',
+};
 
-function getPointsForCorrect(newStreak: number): number {
-  return Math.round(10 * getComboMultiplier(newStreak));
+function getStreakBonus(streak: number): number {
+  return STREAK_BONUSES[streak] ?? 0;
 }
 
 type Phase = 'swiping' | 'reveal';
@@ -46,6 +48,7 @@ interface GameState {
   streak: number;
   bestStreak: number;
   lastPoints: number;
+  totalComboBonus: number;
   phase: Phase;
   swipedRight: boolean;
   wasCorrect: boolean;
@@ -182,6 +185,28 @@ export default function SwipeGameScreen() {
     );
   }
 
+  // ── Combo streak toast ────────────────────────────────────────────────────
+  const comboToastY       = useSharedValue(0);
+  const comboToastOpacity = useSharedValue(0);
+  const comboToastStyle   = useAnimatedStyle(() => ({
+    opacity:   comboToastOpacity.value,
+    transform: [{ translateY: comboToastY.value }],
+  }));
+  const [comboToastText, setComboToastText] = useState('');
+
+  function triggerComboToast(streak: number) {
+    const label = STREAK_BONUS_LABELS[streak] ?? `🔥 Combo! +${getStreakBonus(streak)}`;
+    setComboToastText(label);
+    comboToastOpacity.value = 0;
+    comboToastY.value = 0;
+    comboToastOpacity.value = withSequence(
+      withTiming(1, { duration: 100 }),
+      withTiming(1, { duration: 700 }),
+      withTiming(0, { duration: 300 }),
+    );
+    comboToastY.value = withTiming(-50, { duration: 1100 });
+  }
+
   // ── Game state ────────────────────────────────────────────────────────────
   const [state, setState] = useState<GameState>(() => ({
     profiles: shuffle(allProfiles).slice(0, GAME_SIZE),
@@ -191,6 +216,7 @@ export default function SwipeGameScreen() {
     streak: 0,
     bestStreak: 0,
     lastPoints: 0,
+    totalComboBonus: 0,
     phase: 'swiping',
     swipedRight: false,
     wasCorrect: false,
@@ -199,7 +225,6 @@ export default function SwipeGameScreen() {
 
   const profile = state.profiles[state.index];
   const nextProfile = state.profiles[state.index + 1] ?? null;
-  const currentCombo = getComboMultiplier(state.streak);
 
   function updateCategoryResults(
     prev: GameState,
@@ -217,15 +242,18 @@ export default function SwipeGameScreen() {
   function handleSwipeLeft() {
     const isCorrect = profile.correctDecision === 'reject';
     const newStreak = isCorrect ? state.streak + 1 : 0;
-    const points    = isCorrect ? getPointsForCorrect(newStreak) : -10;
+    const bonus     = isCorrect ? getStreakBonus(newStreak) : 0;
+    const points    = isCorrect ? BASE_CORRECT_PTS + bonus : -BASE_CORRECT_PTS;
     triggerFlash(isCorrect);
     if (!isCorrect) triggerShake();
     triggerScoreFloat(points);
     triggerScorePop();
+    if (bonus > 0) triggerComboToast(newStreak);
     triggerReveal();
     setState((prev) => {
       const ns  = isCorrect ? prev.streak + 1 : 0;
-      const pts = isCorrect ? getPointsForCorrect(ns) : -10;
+      const b   = isCorrect ? getStreakBonus(ns) : 0;
+      const pts = isCorrect ? BASE_CORRECT_PTS + b : -BASE_CORRECT_PTS;
       return {
         ...prev,
         score: prev.score + pts,
@@ -233,6 +261,7 @@ export default function SwipeGameScreen() {
         streak: ns,
         bestStreak: Math.max(ns, prev.streak, prev.bestStreak),
         lastPoints: pts,
+        totalComboBonus: prev.totalComboBonus + b,
         phase: 'reveal',
         swipedRight: false,
         wasCorrect: isCorrect,
@@ -244,15 +273,18 @@ export default function SwipeGameScreen() {
   function handleSwipeRight() {
     const isCorrect = profile.correctDecision === 'date';
     const newStreak = isCorrect ? state.streak + 1 : 0;
-    const points    = isCorrect ? getPointsForCorrect(newStreak) : -10;
+    const bonus     = isCorrect ? getStreakBonus(newStreak) : 0;
+    const points    = isCorrect ? BASE_CORRECT_PTS + bonus : -BASE_CORRECT_PTS;
     triggerFlash(isCorrect);
     if (!isCorrect) triggerShake();
     triggerScoreFloat(points);
     triggerScorePop();
+    if (bonus > 0) triggerComboToast(newStreak);
     triggerReveal();
     setState((prev) => {
       const ns  = isCorrect ? prev.streak + 1 : 0;
-      const pts = isCorrect ? getPointsForCorrect(ns) : -10;
+      const b   = isCorrect ? getStreakBonus(ns) : 0;
+      const pts = isCorrect ? BASE_CORRECT_PTS + b : -BASE_CORRECT_PTS;
       return {
         ...prev,
         score: prev.score + pts,
@@ -260,6 +292,7 @@ export default function SwipeGameScreen() {
         streak: ns,
         bestStreak: Math.max(ns, prev.streak, prev.bestStreak),
         lastPoints: pts,
+        totalComboBonus: prev.totalComboBonus + b,
         phase: 'reveal',
         swipedRight: true,
         wasCorrect: isCorrect,
@@ -277,6 +310,7 @@ export default function SwipeGameScreen() {
           score: String(state.score),
           correct: String(state.correct),
           bestStreak: String(state.bestStreak),
+          totalComboBonus: String(state.totalComboBonus),
           categoryResults: JSON.stringify(state.categoryResults),
         },
       });
@@ -294,7 +328,7 @@ export default function SwipeGameScreen() {
 
   const progress = state.index + 1;
   const progressPct = (progress / GAME_SIZE) * 100;
-  const isComboActive = state.wasCorrect && state.streak >= 3;
+  const lastBonus = state.wasCorrect ? state.lastPoints - BASE_CORRECT_PTS : 0;
 
   function getRevealTitle() {
     if (state.wasCorrect) {
@@ -331,9 +365,6 @@ export default function SwipeGameScreen() {
             <View style={styles.streakBadge}>
               <Text style={styles.streakFire}>🔥</Text>
               <Text style={styles.streakCount}>{state.streak}</Text>
-              {currentCombo > 1 && (
-                <Text style={styles.comboMult}>×{currentCombo}</Text>
-              )}
             </View>
           )}
 
@@ -356,6 +387,11 @@ export default function SwipeGameScreen() {
         <Text style={[styles.scoreFloatTxt, scoreFloat.pos ? styles.scoreFloatPos : styles.scoreFloatNeg]}>
           {scoreFloat.text}
         </Text>
+      </Animated.View>
+
+      {/* Combo streak toast — appears above score float on milestone hits */}
+      <Animated.View style={[styles.comboToast, comboToastStyle]} pointerEvents="none">
+        <Text style={styles.comboToastText}>{comboToastText}</Text>
       </Animated.View>
 
       {/* ── Swiping phase ───────────────────────────────────────────────────── */}
@@ -474,10 +510,10 @@ export default function SwipeGameScreen() {
                 </Text>
               </View>
 
-              {/* Combo bonus */}
-              {isComboActive && (
+              {/* Combo bonus — only shows when a milestone bonus was earned */}
+              {lastBonus > 0 && (
                 <View style={styles.comboBadge}>
-                  <Text style={styles.comboBadgeTxt}>🔥 ×{currentCombo} combo bonus</Text>
+                  <Text style={styles.comboBadgeTxt}>🔥 +{lastBonus} streak bonus!</Text>
                 </View>
               )}
 
@@ -557,6 +593,26 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     zIndex: 999,
+  },
+
+  // ── Combo streak toast ─────────────────────────────────────────────────────
+  comboToast: {
+    position: 'absolute',
+    top: '33%',
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 1002,
+    pointerEvents: 'none',
+  },
+  comboToastText: {
+    fontSize: 30,
+    fontWeight: '900',
+    color: '#ffc107',
+    letterSpacing: -0.3,
+    textShadowColor: 'rgba(0,0,0,0.65)',
+    textShadowOffset: { width: 0, height: 3 },
+    textShadowRadius: 14,
   },
 
   // ── Floating score ─────────────────────────────────────────────────────────
