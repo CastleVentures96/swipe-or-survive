@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { scenarios, FlagType } from '@/data/scenarios';
 
@@ -15,6 +16,7 @@ const ALL_FLAGS: FlagType[] = ['Green Flag', 'Beige Flag', 'Red Flag', 'Block Im
 
 export default function GameScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<FlagType | null>(null);
@@ -46,7 +48,7 @@ export default function GameScreen() {
   const progress = ((currentIndex + 1) / scenarios.length) * 100;
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView style={styles.container} contentContainerStyle={[styles.content, { paddingTop: Math.max(52, insets.top + 12) }]}>
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.progressLabel}>

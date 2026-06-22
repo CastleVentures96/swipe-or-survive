@@ -386,9 +386,10 @@ export default function SwipeGameScreen() {
 
           {/* Score */}
           <Animated.View style={[
-            state.score > 0  ? styles.scoreBadge
-            : wrongCount > 0 ? styles.scoreBadgeNeg
-            : styles.scoreBadgeNeutral,
+            styles.scoreBadge,
+            state.score === 0 && wrongCount > 0 ? styles.scoreBadgeNeg
+            : state.score === 0 ? styles.scoreBadgeNeutral
+            : null,
             scoreHeaderStyle,
           ]}>
             <Text style={styles.scoreText}>

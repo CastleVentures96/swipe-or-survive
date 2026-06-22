@@ -26,7 +26,11 @@ export const CARD_WIDTH  = Math.min(480, Math.max(320, SCREEN_WIDTH - 40));
 // ~24-48dp on Android), header, gap, buttons, and home-indicator clearance.
 // Verified against iPhone 13 (844), iPhone 15 Pro Max (932),
 // Samsung S23 (851), and Pixel 8 (892) logical heights.
-export const CARD_HEIGHT = Math.min(660, Math.max(460, Math.round(SCREEN_HEIGHT - 320)));
+export const CARD_HEIGHT = Math.min(660, Math.max(380, Math.round(SCREEN_HEIGHT - 320)));
+
+// Lines of bio text visible before ellipsis — scales with card height.
+// Formula: content zone (64% of card) minus fixed elements (~179pt), divided by line height (28pt).
+const BIO_LINES = Math.max(2, Math.floor((CARD_HEIGHT * 0.64 - 179) / 28));
 
 // Card background — clearly distinct from the app's #0a0a0a canvas.
 const CARD_BG = '#111319';
@@ -155,7 +159,7 @@ function CardContent({ profile }: { profile: Profile }) {
           flex: 1 ensures it fills whatever space the fixed elements leave.
       ───────────────────────────────────────────────────────────────────── */}
       <View style={styles.bioSection}>
-        <Text style={styles.bioText}>{profile.bio}</Text>
+        <Text style={styles.bioText} numberOfLines={BIO_LINES} ellipsizeMode="tail">{profile.bio}</Text>
       </View>
 
       {/* ── Swipe instruction hint ───────────────────────────────────────────── */}

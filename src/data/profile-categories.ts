@@ -62,7 +62,7 @@ export const profileCategories: Record<number, ProfileCategory> = {
   2:  'Influencer',   // Taylah – content creator
   3:  'FIFO',         // Davo – 28/7 miner
   4:  'Spiritual',    // Kezza – Scorpio, cuts cords
-  5:  'Gym',          // Thommo – body fat % opener
+  5:  'Outdoors',     // Thommo – electrician, outdoor activity mansplainer
   6:  'Corporate',    // Bec – marketing manager, hot & cold
   7:  'Creative',     // Lachie – barista/musician
   8:  'Corporate',    // Rhys – corporate lawyer, "thick skin"
@@ -85,7 +85,7 @@ export const profileCategories: Record<number, ProfileCategory> = {
   25: 'Gym',          // Nathan – fitness model/PT, 300 DMs
   26: 'Creative',     // Greta – sommelier, bottle a day
   27: 'Creative',     // Zara – investigative journalist, wrote about dates
-  28: 'Crypto',       // Tyler – NFT artist, behind on rent
+  28: 'Fitness',      // Tyler – high performance coach, optimises people without consent
   29: 'Influencer',   // Lacey – beautician, wants to be treated like a queen
   30: 'Entrepreneur', // Renee – business coach, investor/partner combo
 
