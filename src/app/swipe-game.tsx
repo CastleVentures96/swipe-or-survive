@@ -256,7 +256,7 @@ export default function SwipeGameScreen() {
       const pts = isCorrect ? BASE_CORRECT_PTS + b : -BASE_CORRECT_PTS;
       return {
         ...prev,
-        score: prev.score + pts,
+        score: Math.max(0, prev.score + pts),
         correct: isCorrect ? prev.correct + 1 : prev.correct,
         streak: ns,
         bestStreak: Math.max(ns, prev.streak, prev.bestStreak),
@@ -287,7 +287,7 @@ export default function SwipeGameScreen() {
       const pts = isCorrect ? BASE_CORRECT_PTS + b : -BASE_CORRECT_PTS;
       return {
         ...prev,
-        score: prev.score + pts,
+        score: Math.max(0, prev.score + pts),
         correct: isCorrect ? prev.correct + 1 : prev.correct,
         streak: ns,
         bestStreak: Math.max(ns, prev.streak, prev.bestStreak),
@@ -353,6 +353,14 @@ export default function SwipeGameScreen() {
       <View style={[styles.header, { paddingTop: headerPaddingTop }]}>
         <View style={styles.headerRow}>
 
+          {/* Exit to home */}
+          <TouchableOpacity
+            onPress={() => router.replace('/')}
+            hitSlop={14}
+            style={styles.exitBtn}>
+            <Text style={styles.exitBtnTxt}>✕</Text>
+          </TouchableOpacity>
+
           {/* Progress counter */}
           <View style={styles.progressPill}>
             <Text style={styles.progCurrent}>{progress}</Text>
@@ -361,7 +369,7 @@ export default function SwipeGameScreen() {
           </View>
 
           {/* Streak badge */}
-          {state.streak >= 2 && (
+          {state.streak >= 1 && (
             <View style={styles.streakBadge}>
               <Text style={styles.streakFire}>🔥</Text>
               <Text style={styles.streakCount}>{state.streak}</Text>
@@ -449,6 +457,13 @@ export default function SwipeGameScreen() {
               </View>
             </View>
 
+            {/* First-card hint — only shown on card 1 */}
+            {state.index === 0 && (
+              <Text style={styles.hintBanner}>
+                💚 Date the good ones · ✕ Pass on the red flags
+              </Text>
+            )}
+
           </View>
 
           <View style={{ height: bottomPadding }} />
@@ -487,7 +502,14 @@ export default function SwipeGameScreen() {
 
               {/* 2. Result title */}
               <Text style={styles.resultTitle}>
-                {state.wasCorrect ? 'Correct Choice' : 'Wrong Choice'}
+                {state.wasCorrect
+                  ? state.streak >= 10 ? '🔥 Unstoppable'
+                  : state.streak >= 5  ? '🔥 On Fire'
+                  : state.streak >= 3  ? '🔥 Hat Trick'
+                  : state.swipedRight  ? '💚 Good Eye'
+                  : '✅ Red Flag Spotted'
+                : state.swipedRight    ? '💀 Fell For It'
+                : '😬 Missed This One'}
               </Text>
 
               {/* What the player did */}
@@ -648,6 +670,26 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+  },
+
+  // Exit button
+  exitBtn: {
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+  },
+  exitBtnTxt: {
+    color: '#555',
+    fontSize: 18,
+    fontWeight: '700',
+  },
+
+  // First-card hint
+  hintBanner: {
+    color: '#444',
+    fontSize: 12,
+    letterSpacing: 0.3,
+    textAlign: 'center',
+    marginTop: 2,
   },
 
   // Progress counter

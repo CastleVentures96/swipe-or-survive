@@ -90,7 +90,7 @@ export default function HomeScreen() {
         <Text style={styles.title}>Swipe or Survive</Text>
         <Text style={styles.subtitle}>Australian Dating Simulator</Text>
         <Text style={styles.description}>
-          100 real profiles. 20 rounds.{'\n'}Can you spot every red flag before it's too late?
+          20 profiles. Some gems. Some disasters.{'\n'}Can you tell who's actually worth your time?
         </Text>
       </View>
 
