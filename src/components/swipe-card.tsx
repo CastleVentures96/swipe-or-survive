@@ -18,13 +18,13 @@ import { profileCategories, CATEGORY_META } from '@/data/profile-categories';
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const SWIPE_THRESHOLD = 80;
 
-// Portrait card — narrow and tall so it reads as a person's profile, not a form.
-// Side gutters (24px each) keep the card centred with dark background visible.
-export const CARD_WIDTH  = Math.min(360, SCREEN_WIDTH - 48);
+// Portrait card — narrow and tall like a real dating profile.
+// Width: 20–30% wider than before; cap at 480 so tablets stay readable.
+// Gutters shrink from 48→40 so narrower phones keep breathing room.
+export const CARD_WIDTH  = Math.min(480, Math.max(320, SCREEN_WIDTH - 40));
 
-// Height fills as much of the game area as possible while leaving room for
-// HUD header (~110px), gap (8px), action buttons (~95px), safe area (~38px).
-export const CARD_HEIGHT = Math.min(660, Math.max(460, Math.round(SCREEN_HEIGHT - 260)));
+// Height: slightly taller than before; 250px overhead covers header + buttons + safe area.
+export const CARD_HEIGHT = Math.min(720, Math.max(500, Math.round(SCREEN_HEIGHT - 250)));
 
 // Card background — clearly distinct from the app's #0a0a0a canvas.
 const CARD_BG = '#111319';
@@ -34,8 +34,8 @@ const AVATAR_SIZE = 96;
 const RING_SIZE   = AVATAR_SIZE + 8;
 const TOP_ZONE_H  = Math.round(CARD_HEIGHT * 0.36);
 
-// Secondary personality chip only renders on cards tall enough to spare the space.
-const SHOW_CHIP = CARD_HEIGHT >= 500;
+// Secondary chip needs more room now that bio text is larger.
+const SHOW_CHIP = CARD_HEIGHT >= 540;
 
 function getInitials(name: string): string {
   const parts = name.trim().split(/\s+/);
@@ -177,34 +177,44 @@ export function SwipeCard({ profile, onSwipeLeft, onSwipeRight }: {
   const _meta  = _cat ? CATEGORY_META[_cat] : null;
   const accent = _meta?.color ?? '#000';
 
-  const tx    = useSharedValue(0);
-  const ty    = useSharedValue(0);
-  const scale = useSharedValue(0.94);
+  const tx      = useSharedValue(0);
+  const ty      = useSharedValue(0);
+  const scale   = useSharedValue(0.88);
+  const entryY  = useSharedValue(32);   // slides up on entrance
+  const entryOp = useSharedValue(0);    // fades in on entrance
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { scale.value = withSpring(1, { damping: 13, stiffness: 130 }); }, []);
+  useEffect(() => {
+    entryOp.value = withTiming(1, { duration: 220 });
+    entryY.value  = withSpring(0, { damping: 14, stiffness: 130 });
+    scale.value   = withSpring(1, { damping: 11, stiffness: 115 });
+  }, []);
 
   const pan = Gesture.Pan()
-    .onBegin(() => { scale.value = withTiming(1.012, { duration: 80 }); })
+    .onBegin(() => { scale.value = withTiming(1.016, { duration: 70 }); })
     .onUpdate((e) => {
       tx.value = e.translationX;
       ty.value = e.translationY * 0.04;
     })
     .onEnd((e) => {
       if (e.translationX > SWIPE_THRESHOLD) {
-        tx.value    = withTiming(SCREEN_WIDTH * 1.6, { duration: 240 }, (done) => {
+        // Decisive swipe-out: fast exit with slight upward arc and scale-down.
+        ty.value    = withTiming(-16, { duration: 200 });
+        tx.value    = withTiming(SCREEN_WIDTH * 1.8, { duration: 200 }, (done) => {
           if (done) runOnJS(onSwipeRight)();
         });
-        scale.value = withTiming(0.92, { duration: 240 });
+        scale.value = withTiming(0.88, { duration: 200 });
       } else if (e.translationX < -SWIPE_THRESHOLD) {
-        tx.value    = withTiming(-SCREEN_WIDTH * 1.6, { duration: 240 }, (done) => {
+        ty.value    = withTiming(-16, { duration: 200 });
+        tx.value    = withTiming(-SCREEN_WIDTH * 1.8, { duration: 200 }, (done) => {
           if (done) runOnJS(onSwipeLeft)();
         });
-        scale.value = withTiming(0.92, { duration: 240 });
+        scale.value = withTiming(0.88, { duration: 200 });
       } else {
-        tx.value    = withSpring(0, { damping: 18, stiffness: 200 });
-        ty.value    = withSpring(0, { damping: 18, stiffness: 200 });
-        scale.value = withSpring(1,  { damping: 13, stiffness: 150 });
+        // Snap-back: bouncy spring so the card feels physical.
+        tx.value    = withSpring(0, { damping: 14, stiffness: 190 });
+        ty.value    = withSpring(0, { damping: 14, stiffness: 190 });
+        scale.value = withSpring(1,  { damping: 8,  stiffness: 180 });
       }
     });
 
@@ -212,13 +222,14 @@ export function SwipeCard({ profile, onSwipeLeft, onSwipeRight }: {
     const rotate = interpolate(
       tx.value,
       [-SCREEN_WIDTH * 0.5, 0, SCREEN_WIDTH * 0.5],
-      [-12, 0, 12],
+      [-16, 0, 16],   // wider rotation arc = more expressive tilt
       Extrapolation.CLAMP,
     );
     return {
+      opacity: entryOp.value,
       transform: [
         { translateX: tx.value },
-        { translateY: ty.value },
+        { translateY: ty.value + entryY.value },
         { rotate: `${rotate}deg` },
         { scale: scale.value },
       ],
@@ -388,7 +399,7 @@ const styles = StyleSheet.create({
 
   // ── Job ───────────────────────────────────────────────────────────────────
   job: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '700',
     letterSpacing: 0.1,
     paddingHorizontal: 20,
@@ -453,9 +464,9 @@ const styles = StyleSheet.create({
     paddingBottom: 4,
   },
   bioText: {
-    color: 'rgba(255,255,255,0.80)',
-    fontSize: 15.5,
-    lineHeight: 26,
+    color: 'rgba(255,255,255,0.82)',
+    fontSize: 17,
+    lineHeight: 28,
     letterSpacing: 0.1,
   },
 

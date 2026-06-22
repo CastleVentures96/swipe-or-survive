@@ -1,11 +1,14 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
+  Extrapolation,
+  interpolate,
   useAnimatedStyle,
   useSharedValue,
+  withRepeat,
   withSequence,
   withSpring,
   withTiming,
@@ -80,11 +83,22 @@ export default function SwipeGameScreen() {
     );
   }
 
-  // ── Button press animations ────────────────────────────────────────────────
+  // ── Button press + ambient glow animations ────────────────────────────────
   const passScale = useSharedValue(1);
   const dateScale = useSharedValue(1);
-  const passBtnStyle = useAnimatedStyle(() => ({ transform: [{ scale: passScale.value }] }));
-  const dateBtnStyle = useAnimatedStyle(() => ({ transform: [{ scale: dateScale.value }] }));
+  const passGlow  = useSharedValue(0.50);
+  const dateGlow  = useSharedValue(0.50);
+
+  const passBtnStyle = useAnimatedStyle(() => ({
+    transform:    [{ scale: passScale.value }],
+    shadowOpacity: passGlow.value,
+    shadowRadius:  interpolate(passGlow.value, [0.38, 0.88], [12, 26], Extrapolation.CLAMP),
+  }));
+  const dateBtnStyle = useAnimatedStyle(() => ({
+    transform:    [{ scale: dateScale.value }],
+    shadowOpacity: dateGlow.value,
+    shadowRadius:  interpolate(dateGlow.value, [0.38, 0.88], [12, 26], Extrapolation.CLAMP),
+  }));
 
   // ── Card shake on wrong answer ────────────────────────────────────────────
   const shakeX = useSharedValue(0);
@@ -120,7 +134,7 @@ export default function SwipeGameScreen() {
       withTiming(1, { duration: 380 }),
       withTiming(0, { duration: 280 })
     );
-    scoreFloatY.value = withTiming(-72, { duration: 740 });
+    scoreFloatY.value = withTiming(-96, { duration: 800 });
   }
 
   // ── Reveal entrance animation ─────────────────────────────────────────────
@@ -136,6 +150,36 @@ export default function SwipeGameScreen() {
     revealSlideY.value  = 18;
     revealOpacity.value = withTiming(1, { duration: 260 });
     revealSlideY.value  = withTiming(0, { duration: 260 });
+  }
+
+  // ── Ambient glow pulse for PASS / DATE buttons ────────────────────────────
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    passGlow.value = withRepeat(
+      withSequence(
+        withTiming(0.88, { duration: 1100 }),
+        withTiming(0.38, { duration: 1100 }),
+      ), -1, true,
+    );
+    dateGlow.value = withRepeat(
+      withSequence(
+        withTiming(0.88, { duration: 1350 }),
+        withTiming(0.38, { duration: 1350 }),
+      ), -1, true,
+    );
+  }, []);
+
+  // ── Score header pop ──────────────────────────────────────────────────────
+  const scoreHeaderScale = useSharedValue(1);
+  const scoreHeaderStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scoreHeaderScale.value }],
+  }));
+
+  function triggerScorePop() {
+    scoreHeaderScale.value = withSequence(
+      withTiming(1.38, { duration: 85 }),
+      withSpring(1, { damping: 7, stiffness: 240 }),
+    );
   }
 
   // ── Game state ────────────────────────────────────────────────────────────
@@ -177,6 +221,7 @@ export default function SwipeGameScreen() {
     triggerFlash(isCorrect);
     if (!isCorrect) triggerShake();
     triggerScoreFloat(points);
+    triggerScorePop();
     triggerReveal();
     setState((prev) => {
       const ns  = isCorrect ? prev.streak + 1 : 0;
@@ -203,6 +248,7 @@ export default function SwipeGameScreen() {
     triggerFlash(isCorrect);
     if (!isCorrect) triggerShake();
     triggerScoreFloat(points);
+    triggerScorePop();
     triggerReveal();
     setState((prev) => {
       const ns  = isCorrect ? prev.streak + 1 : 0;
@@ -292,11 +338,11 @@ export default function SwipeGameScreen() {
           )}
 
           {/* Score */}
-          <View style={[styles.scoreBadge, state.score < 0 && styles.scoreBadgeNeg]}>
+          <Animated.View style={[styles.scoreBadge, state.score < 0 && styles.scoreBadgeNeg, scoreHeaderStyle]}>
             <Text style={styles.scoreText}>
               {state.score > 0 ? '+' : ''}{state.score}
             </Text>
-          </View>
+          </Animated.View>
         </View>
 
         {/* Progress bar */}
@@ -341,8 +387,8 @@ export default function SwipeGameScreen() {
               {/* PASS */}
               <View style={styles.btnGroup}>
                 <Pressable
-                  onPressIn={() => { passScale.value = withTiming(0.86, { duration: 75 }); }}
-                  onPressOut={() => { passScale.value = withSpring(1, { damping: 9, stiffness: 200 }); }}
+                  onPressIn={() => { passScale.value = withTiming(0.82, { duration: 65 }); }}
+                  onPressOut={() => { passScale.value = withSpring(1, { damping: 6, stiffness: 260 }); }}
                   onPress={handleSwipeLeft}
                   hitSlop={14}>
                   <Animated.View style={[styles.passBtn, passBtnStyle]}>
@@ -355,8 +401,8 @@ export default function SwipeGameScreen() {
               {/* DATE */}
               <View style={styles.btnGroup}>
                 <Pressable
-                  onPressIn={() => { dateScale.value = withTiming(0.86, { duration: 75 }); }}
-                  onPressOut={() => { dateScale.value = withSpring(1, { damping: 9, stiffness: 200 }); }}
+                  onPressIn={() => { dateScale.value = withTiming(0.82, { duration: 65 }); }}
+                  onPressOut={() => { dateScale.value = withSpring(1, { damping: 6, stiffness: 260 }); }}
                   onPress={handleSwipeRight}
                   hitSlop={14}>
                   <Animated.View style={[styles.dateBtn, dateBtnStyle]}>
@@ -524,7 +570,7 @@ const styles = StyleSheet.create({
     pointerEvents: 'none',
   },
   scoreFloatTxt: {
-    fontSize: 60,
+    fontSize: 72,
     fontWeight: '900',
     letterSpacing: -2,
     textShadowColor: 'rgba(0,0,0,0.55)',
@@ -681,9 +727,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   passBtn: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 86,
+    height: 86,
+    borderRadius: 43,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(232,25,60,0.08)',
@@ -696,9 +742,9 @@ const styles = StyleSheet.create({
     elevation: 12,
   },
   dateBtn: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 86,
+    height: 86,
+    borderRadius: 43,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(34,197,94,0.08)',
@@ -712,16 +758,16 @@ const styles = StyleSheet.create({
   },
   passIcon: {
     color: '#f02040',
-    fontSize: 28,
+    fontSize: 30,
     fontWeight: '900',
-    lineHeight: 32,
+    lineHeight: 34,
     includeFontPadding: false,
   },
   dateIcon: {
     color: '#22c55e',
-    fontSize: 28,
+    fontSize: 30,
     fontWeight: '900',
-    lineHeight: 32,
+    lineHeight: 34,
     includeFontPadding: false,
   },
   passLabel: {
