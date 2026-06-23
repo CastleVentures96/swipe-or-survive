@@ -13,7 +13,15 @@ export type ProfileCategory =
   | 'Creative'
   | 'Corporate'
   | 'Crypto'
-  | 'Outdoors';
+  | 'Outdoors'
+  | 'Paramedic'
+  | 'SingleParent'
+  | 'DogPerson'
+  | 'CatPerson'
+  | 'VanLife'
+  | 'PublicServant'
+  | 'FestivalAddict'
+  | 'Vegan';
 
 export interface CategoryMeta {
   emoji: string;
@@ -38,11 +46,20 @@ export const CATEGORY_META: Record<ProfileCategory, CategoryMeta> = {
   Corporate:    { emoji: '💼', plural: 'Corporate Types',  color: '#2563EB', icon: '💼' },
   Crypto:       { emoji: '🪙', plural: 'Crypto Bros',      color: '#D97706', icon: '₿' },
   Outdoors:     { emoji: '🌿', plural: 'Outdoorsy Types',  color: '#16A34A', icon: '🐴' },
+  Paramedic:    { emoji: '🚑', plural: 'Paramedics',       color: '#DC2626', icon: '🚑' },
+  SingleParent: { emoji: '👶', plural: 'Single Parents',   color: '#0284C7', icon: '👶' },
+  DogPerson:    { emoji: '🐕', plural: 'Dog People',       color: '#92400E', icon: '🐕' },
+  CatPerson:    { emoji: '🐈', plural: 'Cat People',       color: '#9333EA', icon: '🐈' },
+  VanLife:      { emoji: '🚐', plural: 'Van Lifers',       color: '#78716C', icon: '🚐' },
+  PublicServant:{ emoji: '🏛️', plural: 'Public Servants',  color: '#475569', icon: '📋' },
+  FestivalAddict:{ emoji: '🎪', plural: 'Festival Addicts', color: '#DB2777', icon: '🎪' },
+  Vegan:        { emoji: '🌱', plural: 'Vegans',           color: '#15803D', icon: '🌱' },
 };
 
-// Gym (6): obsessed with the gym as primary identity
+// Pack 1 category counts (IDs 1–100)
+// Gym (5): obsessed with the gym as primary identity
 // Gamer (5): gaming-first lifestyle
-// Tradie (8): trade-based or skilled-labour work
+// Tradie (7): trade-based or skilled-labour work
 // Teacher (7): educators and academic roles
 // Nurse (8): healthcare and clinical roles
 // Influencer (7): content-first personality
@@ -53,8 +70,18 @@ export const CATEGORY_META: Record<ProfileCategory, CategoryMeta> = {
 // Fitness (6): health-oriented without gym obsession
 // Creative (10): arts, design, media, food
 // Corporate (11): office / professional services careers
-// Crypto (4): web3, NFTs, coins-as-personality
+// Crypto (3): web3, NFTs, coins-as-personality
 // Outdoors (6): nature, animals, active outdoor life
+//
+// Pack 2 new categories (IDs 101–130)
+// Paramedic (2): emergency services, managing intensity on and off the job
+// SingleParent (2): parenting solo — priorities, baggage, and who they actually are
+// DogPerson (2): where the dog ends and the person begins
+// CatPerson (2): self-sufficient, selective, occasionally feline
+// VanLife (2): freedom as identity vs freedom as a phase
+// PublicServant (3): stability as a virtue and as an excuse
+// FestivalAddict (2): seasonal availability and the summer calendar
+// Vegan (2): dietary choice vs dietary personality
 
 export const profileCategories: Record<number, ProfileCategory> = {
   // ─── Reject profiles 1–30 ─────────────────────────────────────────────────
@@ -164,4 +191,38 @@ export const profileCategories: Record<number, ProfileCategory> = {
   98: 'Nurse',        // Diana – dentist, will actively choose you
   99: 'Creative',     // Lee – archivist, introvert who communicates
   100: 'Nurse',       // Sam – paramedic & SES volunteer, decent pasta
+
+  // ─── Pack 2 Reject profiles 101–115 ──────────────────────────────────────
+  101: 'FestivalAddict', // Kylie – events staff, summer is gone before it starts
+  102: 'Vegan',          // Wade – house rules non-negotiable, thinks about it every time
+  103: 'VanLife',        // Bonnie – van dweller, travel companion not a relationship
+  104: 'SingleParent',   // Chantelle – tests people early, kid on date two
+  105: 'DogPerson',      // Dezza – Winston decides who reaches date three
+  106: 'CatPerson',      // Tamika – seven cats, free-range, immune to the smell
+  107: 'PublicServant',  // Gregory – stability as identity, ambition is "performative"
+  108: 'Paramedic',      // Travis – emotionally shut off, calls it calm
+  109: 'Corporate',      // Simone – due diligence before the first drink
+  110: 'Gym',            // Callum – turns dates into projects, means well, cannot stop
+  111: 'Gamer',          // Zak – multiple bans, "offline I'm totally different"
+  112: 'FIFO',           // Trish – 3-on-1-off nursing camp, needs someone who needs nothing
+  113: 'Crypto',         // Dougie – rug-pulled three times, DCA-ing into the fourth
+  114: 'Spiritual',      // Celeste – cards for every decision including dinner
+  115: 'Influencer',     // Paige – 15-20 posts a week, "not a creator per se"
+
+  // ─── Pack 2 Date profiles 116–130 ────────────────────────────────────────
+  116: 'FestivalAddict', // Peta – four festivals, books January, zero sunrise stories
+  117: 'Vegan',          // Mika – mentions it once, eats anywhere, excellent falafel
+  118: 'VanLife',        // Tess – did it, got it out of her system, has a door now
+  119: 'SingleParent',   // Pete – transparent, good co-parent, not carrying bitterness
+  120: 'DogPerson',      // Nate – Biscuit is a feature not a filter
+  121: 'CatPerson',      // Ros – two cats, six photos in two years, Carl endorses by visit three
+  122: 'PublicServant',  // Dave – policy analyst, home by 5:30, makes sourdough
+  123: 'Paramedic',      // Bronte – decompresses before coming home, doesn't compare your day
+  124: 'Entrepreneur',   // Hamish – restaurant owner, said no to growth, Mondays off
+  125: 'Teacher',        // Clare – eleven years still interested, home by 4pm, laksa
+  126: 'Tradie',         // Bo – plumber, reads, knows when to listen vs solve
+  127: 'Creative',       // Lena – wedding photographer, never posted an ex, asks first
+  128: 'Fitness',        // Robbie – PT in eating disorder recovery, never comments on bodies
+  129: 'PublicServant',  // Alinta – policy director, volunteers, blank LinkedIn bio
+  130: 'Spiritual',      // Jasper – meditates, went to psychic once, doesn't know what an aura is
 };
