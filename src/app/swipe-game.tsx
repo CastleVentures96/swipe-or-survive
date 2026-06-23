@@ -15,6 +15,8 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
+import * as Haptics from 'expo-haptics';
+
 import { SwipeCard, ProfileCardStatic, CARD_HEIGHT, CARD_WIDTH } from '@/components/swipe-card';
 import { allProfiles, type Profile } from '@/data/profiles';
 import { profileCategories } from '@/data/profile-categories';
@@ -258,6 +260,9 @@ export default function SwipeGameScreen() {
     const bonus      = isCorrect ? getStreakBonus(newStreak) : 0;
     const points     = isCorrect ? BASE_CORRECT_PTS + bonus : -BASE_CORRECT_PTS;
     const actualDelta = isCorrect ? points : Math.max(0, state.score + points) - state.score;
+    Haptics.notificationAsync(
+      isCorrect ? Haptics.NotificationFeedbackType.Success : Haptics.NotificationFeedbackType.Warning
+    );
     triggerFlash(isCorrect);
     if (!isCorrect) triggerShake();
     triggerScoreFloat(actualDelta);
@@ -291,6 +296,9 @@ export default function SwipeGameScreen() {
     const bonus      = isCorrect ? getStreakBonus(newStreak) : 0;
     const points     = isCorrect ? BASE_CORRECT_PTS + bonus : -BASE_CORRECT_PTS;
     const actualDelta = isCorrect ? points : Math.max(0, state.score + points) - state.score;
+    Haptics.notificationAsync(
+      isCorrect ? Haptics.NotificationFeedbackType.Success : Haptics.NotificationFeedbackType.Warning
+    );
     triggerFlash(isCorrect);
     if (!isCorrect) triggerShake();
     triggerScoreFloat(actualDelta);
@@ -321,6 +329,7 @@ export default function SwipeGameScreen() {
   function handleNext() {
     const isLast = state.index >= GAME_SIZE - 1;
     if (isLast) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.replace({
         pathname: '/swipe-results',
         params: {
@@ -457,7 +466,10 @@ export default function SwipeGameScreen() {
               {/* PASS */}
               <View style={styles.btnGroup}>
                 <Pressable
-                  onPressIn={() => { passScale.value = withTiming(0.82, { duration: 65 }); }}
+                  onPressIn={() => {
+                    passScale.value = withTiming(0.82, { duration: 65 });
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  }}
                   onPressOut={() => { passScale.value = withSpring(1, { damping: 6, stiffness: 260 }); }}
                   onPress={handleSwipeLeft}
                   hitSlop={14}>
@@ -471,7 +483,10 @@ export default function SwipeGameScreen() {
               {/* DATE */}
               <View style={styles.btnGroup}>
                 <Pressable
-                  onPressIn={() => { dateScale.value = withTiming(0.82, { duration: 65 }); }}
+                  onPressIn={() => {
+                    dateScale.value = withTiming(0.82, { duration: 65 });
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  }}
                   onPressOut={() => { dateScale.value = withSpring(1, { damping: 6, stiffness: 260 }); }}
                   onPress={handleSwipeRight}
                   hitSlop={14}>

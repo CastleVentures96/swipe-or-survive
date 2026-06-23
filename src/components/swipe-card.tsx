@@ -11,6 +11,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Haptics from 'expo-haptics';
 
 import type { Profile } from '@/data/profiles';
 import { profileCategories, CATEGORY_META } from '@/data/profile-categories';
@@ -204,13 +205,14 @@ export function SwipeCard({ profile, onSwipeLeft, onSwipeRight }: {
     })
     .onEnd((e) => {
       if (e.translationX > SWIPE_THRESHOLD) {
-        // Decisive swipe-out: fast exit with slight upward arc and scale-down.
+        runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Light);
         ty.value    = withTiming(-16, { duration: 200 });
         tx.value    = withTiming(SCREEN_WIDTH * 1.8, { duration: 200 }, (done) => {
           if (done) runOnJS(onSwipeRight)();
         });
         scale.value = withTiming(0.88, { duration: 200 });
       } else if (e.translationX < -SWIPE_THRESHOLD) {
+        runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Light);
         ty.value    = withTiming(-16, { duration: 200 });
         tx.value    = withTiming(-SCREEN_WIDTH * 1.8, { duration: 200 }, (done) => {
           if (done) runOnJS(onSwipeLeft)();
