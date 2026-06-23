@@ -40,43 +40,45 @@ function getStreakSummary(bestStreak: number): string {
   return "No consecutive correct reads. Every wrong choice was a standalone event.";
 }
 
-function getRank(correct: number): Rank {
-  if (correct >= 18) {
+// Score range: 0–240 pts (20 correct × 10 base + streak bonuses +5/+10/+25 at streaks 3/5/10).
+// Wrong answers deduct 10 pts, floored at 0 each time.
+function getRank(score: number): Rank {
+  if (score >= 170) {
     return {
       title: 'Untouchable',
       emoji: '🛡️',
-      description: "You spotted the red flags AND gave the good ones a chance. Peak dating intelligence. Apps should pay you for consultancy.",
+      description: "Near-perfect accuracy and you kept your streak alive. Peak dating intelligence. Apps should pay you for consultancy.",
       color: '#4caf50',
     };
   }
-  if (correct >= 14) {
+  if (score >= 120) {
     return {
       title: 'Red Flag Radar',
       emoji: '🔍',
-      description: "Solid. You can smell a walking disaster from across the bar — and you didn't ghost the decent ones either. A few slipped past but you'll survive.",
+      description: "Solid score. You can smell a walking disaster from across the bar — and you didn't ghost the decent ones either. A few slipped past, but you'll survive.",
       color: '#2196f3',
     };
   }
-  if (correct >= 10) {
+  if (score >= 70) {
     return {
       title: 'Questionable Taste',
       emoji: '🤔',
-      description: "You know some red flags but you're also absolutely going to end up with someone who has a 'Backup Options' folder or reject every good person out of paranoia.",
+      description: "A middling score. You know some red flags but you're also absolutely going to end up with someone who has a 'Backup Options' folder — or reject every good person out of paranoia.",
       color: '#ff9800',
     };
   }
-  if (correct >= 5) {
+  if (score >= 20) {
     return {
       title: "This Is Why You're Single",
       emoji: '😬',
-      description: "You missed most of the red flags AND passed on the decent ones. Have you considered that the problem might be the person swiping?",
+      description: "A low score. You missed most of the red flags AND passed on the decent ones. Have you considered that the problem might be the person swiping?",
       color: '#ff7043',
     };
   }
   return {
     title: 'Walking Red Flag',
     emoji: '🚩',
-    description: "You dated the chaos, ghosted the kind ones, and called it intuition. You ARE the red flag. Therapy. Now.",
+    description: "You dated the chaos, ghosted the kind ones, and called it intuition. Your score was basically zero. You ARE the red flag. Therapy. Now.",
     color: '#ff4d6d',
   };
 }
@@ -185,7 +187,7 @@ export default function SwipeResultsScreen() {
   const bestStreak      = parseInt(bestStreakParam      ?? '0', 10);
   const totalComboBonus = parseInt(totalComboBonusParam ?? '0', 10);
   const wrong           = GAME_SIZE - correct;
-  const rank            = getRank(correct);
+  const rank            = getRank(score);
 
   let rawCategoryResults: Record<string, { seen: number; correct: number }> = {};
   try {
