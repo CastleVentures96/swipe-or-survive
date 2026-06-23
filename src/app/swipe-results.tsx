@@ -16,19 +16,26 @@ interface Rank {
 }
 
 function buildShareText(
-  rankTitle: string,
   rankEmoji: string,
+  rankTitle: string,
   score: number,
   correct: number,
+  wrong: number,
   bestStreak: number,
 ): string {
-  const scorePart = `${score > 0 ? '+' : ''}${score} pts`;
-  const streakPart = bestStreak >= 3 ? ` · 🔥 ${bestStreak} streak` : '';
-  return (
-    `I got "${rankTitle}" in Swipe or Survive ${rankEmoji}\n` +
-    `${correct}/20 correct · ${scorePart}${streakPart}\n` +
-    `Can you do better? 🚩`
-  );
+  return [
+    `${rankEmoji} ${rankTitle}`,
+    '',
+    `${score} Points`,
+    `${correct} Correct`,
+    `${wrong} Wrong`,
+    `Best Streak: ${bestStreak}`,
+    '',
+    'Think you can beat me?',
+    '',
+    'Swipe or Survive',
+    'Australian Dating Simulator',
+  ].join('\n');
 }
 
 function getStreakSummary(bestStreak: number): string {
@@ -203,7 +210,7 @@ export default function SwipeResultsScreen() {
   const [showFullBreakdown, setShowFullBreakdown] = useState(false);
 
   async function handleShare() {
-    const text = buildShareText(rank.title, rank.emoji, score, correct, bestStreak);
+    const text = buildShareText(rank.emoji, rank.title, score, correct, wrong, bestStreak);
     if (Platform.OS === 'web') {
       try {
         await navigator.clipboard.writeText(text);
