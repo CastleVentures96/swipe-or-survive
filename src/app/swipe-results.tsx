@@ -4,6 +4,13 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CATEGORY_META, type ProfileCategory } from '@/data/profile-categories';
 import { loadStats, type LifetimeStats } from '@/utils/stats';
+import {
+  loadUnlocked,
+  persistUnlocked,
+  checkNewUnlocks,
+  ACHIEVEMENTS,
+  type GameResult,
+} from '@/utils/achievements';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_WIDTH = Math.min(520, SCREEN_WIDTH - 32);
@@ -181,20 +188,23 @@ export default function SwipeResultsScreen() {
     bestStreak: bestStreakParam,
     totalComboBonus: totalComboBonusParam,
     categoryResults: categoryResultsParam,
+    totalSwipedRight: totalSwipedRightParam,
   } = useLocalSearchParams<{
     score: string;
     correct: string;
     bestStreak: string;
     totalComboBonus: string;
     categoryResults: string;
+    totalSwipedRight: string;
   }>();
   const router = useRouter();
 
-  const score           = parseInt(scoreParam           ?? '0', 10);
-  const correct         = parseInt(correctParam         ?? '0', 10);
-  const bestStreak      = parseInt(bestStreakParam      ?? '0', 10);
-  const totalComboBonus = parseInt(totalComboBonusParam ?? '0', 10);
-  const wrong           = GAME_SIZE - correct;
+  const score            = parseInt(scoreParam            ?? '0', 10);
+  const correct          = parseInt(correctParam          ?? '0', 10);
+  const bestStreak       = parseInt(bestStreakParam       ?? '0', 10);
+  const totalComboBonus  = parseInt(totalComboBonusParam  ?? '0', 10);
+  const totalSwipedRight = parseInt(totalSwipedRightParam ?? '0', 10);
+  const wrong            = GAME_SIZE - correct;
   const rank            = getRank(score);
 
   let rawCategoryResults: Record<string, { seen: number; correct: number }> = {};
@@ -210,9 +220,26 @@ export default function SwipeResultsScreen() {
   const [copied, setCopied] = useState(false);
   const [showFullBreakdown, setShowFullBreakdown] = useState(false);
   const [lifetimeStats, setLifetimeStats] = useState<LifetimeStats | null>(null);
+  const [unlockedIds, setUnlockedIds] = useState<Set<string>>(new Set());
+  const [newlyUnlockedIds, setNewlyUnlockedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    loadStats().then(setLifetimeStats);
+    Promise.all([loadStats(), loadUnlocked()]).then(([stats, alreadyUnlocked]) => {
+      setLifetimeStats(stats);
+      const gameResult: GameResult = {
+        score,
+        correct,
+        wrong,
+        bestStreak,
+        totalSwipedRight,
+        gamesPlayed: stats.gamesPlayed,
+      };
+      const newIds = checkNewUnlocks(gameResult, alreadyUnlocked);
+      const merged = new Set([...alreadyUnlocked, ...newIds]);
+      setUnlockedIds(merged);
+      setNewlyUnlockedIds(new Set(newIds));
+      if (newIds.length > 0) persistUnlocked(merged);
+    });
   }, []);
 
   async function handleShare() {
@@ -384,6 +411,62 @@ export default function SwipeResultsScreen() {
                 <Text style={styles.lifetimeLabel}>Total Wrong</Text>
                 <Text style={styles.lifetimeValue}>{lifetimeStats.totalWrong}</Text>
               </View>
+            </View>
+
+            {/* 11. Achievements */}
+            <View style={styles.divider} />
+            <View style={styles.achievementsSection}>
+              <Text style={styles.sectionLabel}>🏆 ACHIEVEMENTS</Text>
+              {ACHIEVEMENTS.map((ach) => {
+                const isUnlocked = unlockedIds.has(ach.id);
+                const isNew      = newlyUnlockedIds.has(ach.id);
+                const progress   = ach.progressMax
+                  ? Math.min(lifetimeStats.gamesPlayed, ach.progressMax)
+                  : 0;
+                return (
+                  <View
+                    key={ach.id}
+                    style={[
+                      styles.achCard,
+                      isUnlocked ? styles.achCardUnlocked : styles.achCardLocked,
+                      isNew ? styles.achCardNew : null,
+                    ]}>
+                    <Text style={[styles.achEmoji, !isUnlocked && styles.achEmojiLocked]}>
+                      {ach.emoji}
+                    </Text>
+                    <View style={styles.achInfo}>
+                      <View style={styles.achTitleRow}>
+                        <Text style={[styles.achTitle, !isUnlocked && styles.achTitleLocked]}>
+                          {ach.title}
+                        </Text>
+                        {isNew && (
+                          <View style={styles.newBadge}>
+                            <Text style={styles.newBadgeText}>NEW</Text>
+                          </View>
+                        )}
+                      </View>
+                      <Text style={[styles.achDesc, !isUnlocked && styles.achDescLocked]}>
+                        {ach.description}
+                      </Text>
+                      {ach.progressMax && !isUnlocked && (
+                        <>
+                          <View style={styles.achProgressBar}>
+                            <View
+                              style={[
+                                styles.achProgressFill,
+                                { width: `${Math.round((progress / ach.progressMax) * 100)}%` as `${number}%` },
+                              ]}
+                            />
+                          </View>
+                          <Text style={styles.achProgressText}>
+                            {progress} / {ach.progressMax}
+                          </Text>
+                        </>
+                      )}
+                    </View>
+                  </View>
+                );
+              })}
             </View>
           </>
         )}
@@ -697,7 +780,99 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 
-  // 11–13. Buttons
+  // 11. Achievements
+  achievementsSection: {
+    gap: 8,
+  },
+  achCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+  },
+  achCardUnlocked: {
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderColor: 'rgba(255,255,255,0.10)',
+  },
+  achCardLocked: {
+    backgroundColor: 'rgba(255,255,255,0.015)',
+    borderColor: 'rgba(255,255,255,0.05)',
+    opacity: 0.38,
+  },
+  achCardNew: {
+    backgroundColor: 'rgba(255,215,0,0.07)',
+    borderColor: 'rgba(255,215,0,0.35)',
+    opacity: 1,
+  },
+  achEmoji: {
+    fontSize: 22,
+    lineHeight: 26,
+    marginTop: 1,
+  },
+  achEmojiLocked: {
+    opacity: 0.5,
+  },
+  achInfo: {
+    flex: 1,
+    gap: 3,
+  },
+  achTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+  },
+  achTitle: {
+    color: 'rgba(255,255,255,0.88)',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  achTitleLocked: {
+    color: 'rgba(255,255,255,0.50)',
+  },
+  achDesc: {
+    color: 'rgba(255,255,255,0.45)',
+    fontSize: 11.5,
+    lineHeight: 16,
+  },
+  achDescLocked: {
+    color: 'rgba(255,255,255,0.28)',
+  },
+  newBadge: {
+    backgroundColor: 'rgba(255,215,0,0.22)',
+    borderRadius: 5,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderWidth: 1,
+    borderColor: 'rgba(255,215,0,0.45)',
+  },
+  newBadgeText: {
+    color: '#ffd700',
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+  },
+  achProgressBar: {
+    height: 2,
+    backgroundColor: 'rgba(255,255,255,0.10)',
+    borderRadius: 1,
+    overflow: 'hidden',
+    marginTop: 4,
+  },
+  achProgressFill: {
+    height: '100%',
+    backgroundColor: 'rgba(255,255,255,0.35)',
+    borderRadius: 1,
+  },
+  achProgressText: {
+    color: 'rgba(255,255,255,0.25)',
+    fontSize: 10,
+    fontWeight: '600',
+    marginTop: 1,
+  },
+
+  // 12–14. Buttons
   primaryBtn: {
     backgroundColor: '#ff4d6d',
     paddingVertical: 16,

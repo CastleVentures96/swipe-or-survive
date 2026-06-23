@@ -57,6 +57,7 @@ interface GameState {
   swipedRight: boolean;
   wasCorrect: boolean;
   categoryResults: Record<string, CategoryStat>;
+  totalSwipedRight: number;
 }
 
 function shuffle<T>(arr: T[]): T[] {
@@ -230,6 +231,7 @@ export default function SwipeGameScreen() {
     swipedRight: false,
     wasCorrect: false,
     categoryResults: {},
+    totalSwipedRight: 0,
   }));
 
   const profile = state.profiles[state.index];
@@ -323,6 +325,7 @@ export default function SwipeGameScreen() {
         swipedRight: true,
         wasCorrect: isCorrect,
         categoryResults: updateCategoryResults(prev, profile.id, isCorrect),
+        totalSwipedRight: prev.totalSwipedRight + 1,
       };
     });
   }
@@ -345,6 +348,7 @@ export default function SwipeGameScreen() {
           bestStreak: String(state.bestStreak),
           totalComboBonus: String(state.totalComboBonus),
           categoryResults: JSON.stringify(state.categoryResults),
+          totalSwipedRight: String(state.totalSwipedRight),
         },
       });
     } else {
