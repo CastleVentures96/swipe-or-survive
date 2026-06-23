@@ -222,6 +222,8 @@ export default function SwipeResultsScreen() {
   const [lifetimeStats, setLifetimeStats] = useState<LifetimeStats | null>(null);
   const [unlockedIds, setUnlockedIds] = useState<Set<string>>(new Set());
   const [newlyUnlockedIds, setNewlyUnlockedIds] = useState<Set<string>>(new Set());
+  const [showLifetimeStats, setShowLifetimeStats] = useState(false);
+  const [showAchievements, setShowAchievements] = useState(false);
 
   useEffect(() => {
     Promise.all([loadStats(), loadUnlocked()]).then(([stats, alreadyUnlocked]) => {
@@ -238,7 +240,10 @@ export default function SwipeResultsScreen() {
       const merged = new Set([...alreadyUnlocked, ...newIds]);
       setUnlockedIds(merged);
       setNewlyUnlockedIds(new Set(newIds));
-      if (newIds.length > 0) persistUnlocked(merged);
+      if (newIds.length > 0) {
+        setShowAchievements(true);
+        persistUnlocked(merged);
+      }
     });
   }, []);
 
@@ -269,10 +274,9 @@ export default function SwipeResultsScreen() {
       ]}
       showsVerticalScrollIndicator={false}>
 
-      {/* ── Single centered results card ─────────────────────────────── */}
       <View style={[styles.card, { shadowColor: rank.color }]}>
 
-        {/* 1 + 2. Game Over / Rank */}
+        {/* 1. Rank header */}
         <View style={styles.rankHeader}>
           <View style={[styles.emojiRing, { borderColor: rank.color + '55', backgroundColor: rank.color + '18' }]}>
             <Text style={styles.rankEmoji}>{rank.emoji}</Text>
@@ -281,18 +285,13 @@ export default function SwipeResultsScreen() {
           <Text style={[styles.rankTitle, { color: rank.color }]}>{rank.title}</Text>
         </View>
 
-        {/* 3. Verdict */}
-        <Text style={styles.verdict}>{rank.description}</Text>
-
-        <View style={styles.divider} />
-
-        {/* 4. Score */}
+        {/* 2. Score */}
         <View style={styles.scoreBlock}>
           <Text style={styles.scoreNumber}>{score > 0 ? '+' : ''}{score}</Text>
           <Text style={styles.scoreUnit}>points</Text>
         </View>
 
-        {/* 5. Correct / Wrong */}
+        {/* 3. Correct / Wrong */}
         <View style={styles.chipRow}>
           <View style={[styles.chip, styles.chipGreen]}>
             <Text style={[styles.chipNum, styles.textGreen]}>{correct}</Text>
@@ -304,7 +303,7 @@ export default function SwipeResultsScreen() {
           </View>
         </View>
 
-        {/* 6. Best streak */}
+        {/* 4. Best streak */}
         <View style={styles.metaRow}>
           <Text style={styles.metaLabel}>Best streak</Text>
           <Text style={styles.metaValue}>
@@ -315,7 +314,7 @@ export default function SwipeResultsScreen() {
           <Text style={styles.streakQuip}>{getStreakSummary(bestStreak)}</Text>
         )}
 
-        {/* 7. Combo bonus */}
+        {/* 5. Combo bonus */}
         {totalComboBonus > 0 && (
           <View style={styles.metaRow}>
             <Text style={styles.metaLabel}>Streak bonuses</Text>
@@ -323,12 +322,35 @@ export default function SwipeResultsScreen() {
           </View>
         )}
 
+        {/* 6. Verdict — below stats so the score lands before the punchline */}
+        <Text style={styles.verdict}>{rank.description}</Text>
+
         <View style={styles.divider} />
 
-        {/* 8. Top 3 category highlights */}
+        {/* 7. Play Again — above fold for replay rate */}
+        <TouchableOpacity
+          style={styles.primaryBtn}
+          onPress={() => router.replace('/swipe-game')}
+          activeOpacity={0.85}>
+          <Text style={styles.primaryBtnText}>Play Again 🔄</Text>
+        </TouchableOpacity>
+
+        {/* 8. Share Result — in the emotional window, not buried */}
+        <TouchableOpacity
+          style={styles.shareBtn}
+          onPress={handleShare}
+          activeOpacity={0.85}>
+          <Text style={styles.shareBtnText}>
+            {copied ? 'Copied! ✓' : 'Share Result 📤'}
+          </Text>
+        </TouchableOpacity>
+
+        <View style={styles.divider} />
+
+        {/* 9. Category Breakdown — top 3 always visible, full detail behind toggle */}
         {headlines.length > 0 && (
           <View style={styles.highlightsSection}>
-            <Text style={styles.sectionLabel}>📊 CATEGORY HIGHLIGHTS</Text>
+            <Text style={styles.sectionLabel}>📊 CATEGORY BREAKDOWN</Text>
             {headlines.map((line, i) => (
               <View key={i} style={styles.highlightRow}>
                 <View style={styles.highlightDot} />
@@ -338,7 +360,6 @@ export default function SwipeResultsScreen() {
           </View>
         )}
 
-        {/* Full breakdown (expanded) */}
         {showFullBreakdown && categoryStats.length > 0 && (
           <View style={styles.fullBreakdown}>
             {categoryStats.map((stat) => {
@@ -373,7 +394,6 @@ export default function SwipeResultsScreen() {
           </View>
         )}
 
-        {/* 9. Show Full Breakdown toggle */}
         {categoryStats.length > 0 && (
           <TouchableOpacity
             style={styles.expandBtn}
@@ -385,111 +405,119 @@ export default function SwipeResultsScreen() {
           </TouchableOpacity>
         )}
 
-        {/* 10. Lifetime Stats */}
+        {/* 10 + 11. Lifetime Stats & Achievements — rendered once async load completes */}
         {lifetimeStats !== null && (
           <>
             <View style={styles.divider} />
-            <View style={styles.lifetimeSection}>
-              <Text style={styles.sectionLabel}>📊 LIFETIME STATS</Text>
-              <View style={styles.lifetimeRow}>
-                <Text style={styles.lifetimeLabel}>Games Played</Text>
-                <Text style={styles.lifetimeValue}>{lifetimeStats.gamesPlayed}</Text>
-              </View>
-              <View style={styles.lifetimeRow}>
-                <Text style={styles.lifetimeLabel}>Highest Score</Text>
-                <Text style={styles.lifetimeValue}>{lifetimeStats.highestScore}</Text>
-              </View>
-              <View style={styles.lifetimeRow}>
-                <Text style={styles.lifetimeLabel}>Best Streak</Text>
-                <Text style={styles.lifetimeValue}>{lifetimeStats.bestStreakEver}</Text>
-              </View>
-              <View style={styles.lifetimeRow}>
-                <Text style={styles.lifetimeLabel}>Total Correct</Text>
-                <Text style={styles.lifetimeValue}>{lifetimeStats.totalCorrect}</Text>
-              </View>
-              <View style={styles.lifetimeRow}>
-                <Text style={styles.lifetimeLabel}>Total Wrong</Text>
-                <Text style={styles.lifetimeValue}>{lifetimeStats.totalWrong}</Text>
-              </View>
-            </View>
 
-            {/* 11. Achievements */}
+            {/* Lifetime Stats — collapsible panel, collapsed by default */}
+            <TouchableOpacity
+              style={styles.panelHeader}
+              onPress={() => setShowLifetimeStats((v) => !v)}
+              activeOpacity={0.7}>
+              <Text style={styles.sectionLabel}>📈 LIFETIME STATS</Text>
+              <Text style={styles.panelChevron}>{showLifetimeStats ? '↑' : '↓'}</Text>
+            </TouchableOpacity>
+
+            {showLifetimeStats && (
+              <View style={styles.lifetimeSection}>
+                <View style={styles.lifetimeRow}>
+                  <Text style={styles.lifetimeLabel}>Games Played</Text>
+                  <Text style={styles.lifetimeValue}>{lifetimeStats.gamesPlayed}</Text>
+                </View>
+                <View style={styles.lifetimeRow}>
+                  <Text style={styles.lifetimeLabel}>Highest Score</Text>
+                  <Text style={styles.lifetimeValue}>{lifetimeStats.highestScore}</Text>
+                </View>
+                <View style={styles.lifetimeRow}>
+                  <Text style={styles.lifetimeLabel}>Best Streak</Text>
+                  <Text style={styles.lifetimeValue}>{lifetimeStats.bestStreakEver}</Text>
+                </View>
+                <View style={styles.lifetimeRow}>
+                  <Text style={styles.lifetimeLabel}>Total Correct</Text>
+                  <Text style={styles.lifetimeValue}>{lifetimeStats.totalCorrect}</Text>
+                </View>
+                <View style={styles.lifetimeRow}>
+                  <Text style={styles.lifetimeLabel}>Total Wrong</Text>
+                  <Text style={styles.lifetimeValue}>{lifetimeStats.totalWrong}</Text>
+                </View>
+              </View>
+            )}
+
             <View style={styles.divider} />
-            <View style={styles.achievementsSection}>
+
+            {/* Achievements — expanded if new unlocks this run, collapsed otherwise */}
+            <TouchableOpacity
+              style={styles.panelHeader}
+              onPress={() => setShowAchievements((v) => !v)}
+              activeOpacity={0.7}>
               <Text style={styles.sectionLabel}>🏆 ACHIEVEMENTS</Text>
-              {ACHIEVEMENTS.map((ach) => {
-                const isUnlocked = unlockedIds.has(ach.id);
-                const isNew      = newlyUnlockedIds.has(ach.id);
-                const progress   = ach.progressMax
-                  ? Math.min(lifetimeStats.gamesPlayed, ach.progressMax)
-                  : 0;
-                return (
-                  <View
-                    key={ach.id}
-                    style={[
-                      styles.achCard,
-                      isUnlocked ? styles.achCardUnlocked : styles.achCardLocked,
-                      isNew ? styles.achCardNew : null,
-                    ]}>
-                    <Text style={[styles.achEmoji, !isUnlocked && styles.achEmojiLocked]}>
-                      {ach.emoji}
-                    </Text>
-                    <View style={styles.achInfo}>
-                      <View style={styles.achTitleRow}>
-                        <Text style={[styles.achTitle, !isUnlocked && styles.achTitleLocked]}>
-                          {ach.title}
+              <View style={styles.panelRight}>
+                {newlyUnlockedIds.size > 0 && (
+                  <Text style={styles.panelNewText}>{newlyUnlockedIds.size} NEW ✨</Text>
+                )}
+                <Text style={styles.panelChevron}>{showAchievements ? '↑' : '↓'}</Text>
+              </View>
+            </TouchableOpacity>
+
+            {showAchievements && (
+              <View style={styles.achievementsSection}>
+                {ACHIEVEMENTS.map((ach) => {
+                  const isUnlocked = unlockedIds.has(ach.id);
+                  const isNew      = newlyUnlockedIds.has(ach.id);
+                  const progress   = ach.progressMax
+                    ? Math.min(lifetimeStats.gamesPlayed, ach.progressMax)
+                    : 0;
+                  return (
+                    <View
+                      key={ach.id}
+                      style={[
+                        styles.achCard,
+                        isUnlocked ? styles.achCardUnlocked : styles.achCardLocked,
+                        isNew ? styles.achCardNew : null,
+                      ]}>
+                      <Text style={[styles.achEmoji, !isUnlocked && styles.achEmojiLocked]}>
+                        {ach.emoji}
+                      </Text>
+                      <View style={styles.achInfo}>
+                        <View style={styles.achTitleRow}>
+                          <Text style={[styles.achTitle, !isUnlocked && styles.achTitleLocked]}>
+                            {ach.title}
+                          </Text>
+                          {isNew && (
+                            <View style={styles.newBadge}>
+                              <Text style={styles.newBadgeText}>NEW</Text>
+                            </View>
+                          )}
+                        </View>
+                        <Text style={[styles.achDesc, !isUnlocked && styles.achDescLocked]}>
+                          {ach.description}
                         </Text>
-                        {isNew && (
-                          <View style={styles.newBadge}>
-                            <Text style={styles.newBadgeText}>NEW</Text>
-                          </View>
+                        {ach.progressMax && !isUnlocked && (
+                          <>
+                            <View style={styles.achProgressBar}>
+                              <View
+                                style={[
+                                  styles.achProgressFill,
+                                  { width: `${Math.round((progress / ach.progressMax) * 100)}%` as `${number}%` },
+                                ]}
+                              />
+                            </View>
+                            <Text style={styles.achProgressText}>
+                              {progress} / {ach.progressMax}
+                            </Text>
+                          </>
                         )}
                       </View>
-                      <Text style={[styles.achDesc, !isUnlocked && styles.achDescLocked]}>
-                        {ach.description}
-                      </Text>
-                      {ach.progressMax && !isUnlocked && (
-                        <>
-                          <View style={styles.achProgressBar}>
-                            <View
-                              style={[
-                                styles.achProgressFill,
-                                { width: `${Math.round((progress / ach.progressMax) * 100)}%` as `${number}%` },
-                              ]}
-                            />
-                          </View>
-                          <Text style={styles.achProgressText}>
-                            {progress} / {ach.progressMax}
-                          </Text>
-                        </>
-                      )}
                     </View>
-                  </View>
-                );
-              })}
-            </View>
+                  );
+                })}
+              </View>
+            )}
           </>
         )}
 
         <View style={styles.divider} />
-
-        {/* 10. Play Again */}
-        <TouchableOpacity
-          style={styles.primaryBtn}
-          onPress={() => router.replace('/swipe-game')}
-          activeOpacity={0.85}>
-          <Text style={styles.primaryBtnText}>Play Again 🔄</Text>
-        </TouchableOpacity>
-
-        {/* 11. Share Result */}
-        <TouchableOpacity
-          style={styles.shareBtn}
-          onPress={handleShare}
-          activeOpacity={0.85}>
-          <Text style={styles.shareBtnText}>
-            {copied ? 'Copied! ✓' : 'Share Result 📤'}
-          </Text>
-        </TouchableOpacity>
 
         {/* 12. Back to Home */}
         <TouchableOpacity
@@ -917,5 +945,27 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     textAlign: 'center',
     marginTop: -4,
+  },
+  panelHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 2,
+  },
+  panelRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  panelChevron: {
+    color: 'rgba(255,255,255,0.35)',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  panelNewText: {
+    color: '#ffd700',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
 });
