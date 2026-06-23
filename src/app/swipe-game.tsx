@@ -8,6 +8,7 @@ import Animated, {
   interpolate,
   useAnimatedStyle,
   useSharedValue,
+  withDelay,
   withRepeat,
   withSequence,
   withSpring,
@@ -208,6 +209,10 @@ export default function SwipeGameScreen() {
     comboToastY.value = withTiming(-50, { duration: 1100 });
   }
 
+  // ── Hint fade — visible on cards 1+2, fades out while reading card 2 ──────
+  const hintOpacity  = useSharedValue(1);
+  const hintAnimStyle = useAnimatedStyle(() => ({ opacity: hintOpacity.value }));
+
   // ── Game state ────────────────────────────────────────────────────────────
   const [state, setState] = useState<GameState>(() => ({
     profiles: shuffle(allProfiles).slice(0, GAME_SIZE),
@@ -226,6 +231,13 @@ export default function SwipeGameScreen() {
 
   const profile = state.profiles[state.index];
   const nextProfile = state.profiles[state.index + 1] ?? null;
+
+  // Start fading the hint after 1.2s on card 2 so it's gone before card 3.
+  useEffect(() => {
+    if (state.index === 1 && state.phase === 'swiping') {
+      hintOpacity.value = withDelay(1200, withTiming(0, { duration: 800 }));
+    }
+  }, [state.index, state.phase]);
 
   function updateCategoryResults(
     prev: GameState,
@@ -471,11 +483,12 @@ export default function SwipeGameScreen() {
               </View>
             </View>
 
-            {/* First-card hint — only shown on card 1 */}
-            {state.index === 0 && (
-              <Text style={styles.hintBanner}>
-                {'← Swipe left to PASS · Swipe right to DATE →\nor tap the buttons above'}
-              </Text>
+            {/* Swipe hint — visible on cards 1 and 2, fades out on card 2 */}
+            {state.index <= 1 && (
+              <Animated.View style={[styles.hintPill, hintAnimStyle]} pointerEvents="none">
+                <Text style={styles.hintText}>{'← Swipe left to PASS · Swipe right to DATE →'}</Text>
+                <Text style={styles.hintSub}>or tap the buttons above</Text>
+              </Animated.View>
             )}
 
           </View>
@@ -704,13 +717,30 @@ const styles = StyleSheet.create({
     fontWeight: '400',
   },
 
-  // First-card hint
-  hintBanner: {
-    color: '#444',
-    fontSize: 12,
-    letterSpacing: 0.3,
+  // Swipe hint pill
+  hintPill: {
+    marginTop: 10,
+    alignSelf: 'center',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    alignItems: 'center',
+    gap: 3,
+  },
+  hintText: {
+    color: 'rgba(255,255,255,0.65)',
+    fontSize: 13,
+    fontWeight: '600',
+    letterSpacing: 0.2,
     textAlign: 'center',
-    marginTop: 2,
+  },
+  hintSub: {
+    color: 'rgba(255,255,255,0.28)',
+    fontSize: 11,
+    textAlign: 'center',
   },
 
   // Progress counter
