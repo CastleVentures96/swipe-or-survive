@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Dimensions, Platform, ScrollView, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CATEGORY_META, type ProfileCategory } from '@/data/profile-categories';
+import { loadStats, type LifetimeStats } from '@/utils/stats';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_WIDTH = Math.min(520, SCREEN_WIDTH - 32);
@@ -208,6 +209,11 @@ export default function SwipeResultsScreen() {
   const insets = useSafeAreaInsets();
   const [copied, setCopied] = useState(false);
   const [showFullBreakdown, setShowFullBreakdown] = useState(false);
+  const [lifetimeStats, setLifetimeStats] = useState<LifetimeStats | null>(null);
+
+  useEffect(() => {
+    loadStats().then(setLifetimeStats);
+  }, []);
 
   async function handleShare() {
     const text = buildShareText(rank.emoji, rank.title, score, correct, wrong, bestStreak);
@@ -350,6 +356,36 @@ export default function SwipeResultsScreen() {
               {showFullBreakdown ? 'Hide Breakdown ↑' : 'Show Full Breakdown ↓'}
             </Text>
           </TouchableOpacity>
+        )}
+
+        {/* 10. Lifetime Stats */}
+        {lifetimeStats !== null && (
+          <>
+            <View style={styles.divider} />
+            <View style={styles.lifetimeSection}>
+              <Text style={styles.sectionLabel}>📊 LIFETIME STATS</Text>
+              <View style={styles.lifetimeRow}>
+                <Text style={styles.lifetimeLabel}>Games Played</Text>
+                <Text style={styles.lifetimeValue}>{lifetimeStats.gamesPlayed}</Text>
+              </View>
+              <View style={styles.lifetimeRow}>
+                <Text style={styles.lifetimeLabel}>Highest Score</Text>
+                <Text style={styles.lifetimeValue}>{lifetimeStats.highestScore}</Text>
+              </View>
+              <View style={styles.lifetimeRow}>
+                <Text style={styles.lifetimeLabel}>Best Streak</Text>
+                <Text style={styles.lifetimeValue}>{lifetimeStats.bestStreakEver}</Text>
+              </View>
+              <View style={styles.lifetimeRow}>
+                <Text style={styles.lifetimeLabel}>Total Correct</Text>
+                <Text style={styles.lifetimeValue}>{lifetimeStats.totalCorrect}</Text>
+              </View>
+              <View style={styles.lifetimeRow}>
+                <Text style={styles.lifetimeLabel}>Total Wrong</Text>
+                <Text style={styles.lifetimeValue}>{lifetimeStats.totalWrong}</Text>
+              </View>
+            </View>
+          </>
         )}
 
         <View style={styles.divider} />
@@ -641,7 +677,27 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
 
-  // 10–12. Buttons
+  // 10. Lifetime Stats
+  lifetimeSection: {
+    gap: 10,
+  },
+  lifetimeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  lifetimeLabel: {
+    color: 'rgba(255,255,255,0.40)',
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  lifetimeValue: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+
+  // 11–13. Buttons
   primaryBtn: {
     backgroundColor: '#ff4d6d',
     paddingVertical: 16,

@@ -18,6 +18,7 @@ import Animated, {
 import * as Haptics from 'expo-haptics';
 
 import { SwipeCard, ProfileCardStatic, CARD_HEIGHT, CARD_WIDTH } from '@/components/swipe-card';
+import { updateStats } from '@/utils/stats';
 import { allProfiles, type Profile } from '@/data/profiles';
 import { profileCategories } from '@/data/profile-categories';
 
@@ -326,10 +327,16 @@ export default function SwipeGameScreen() {
     });
   }
 
-  function handleNext() {
+  async function handleNext() {
     const isLast = state.index >= GAME_SIZE - 1;
     if (isLast) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      await updateStats({
+        score:      state.score,
+        correct:    state.correct,
+        wrong:      GAME_SIZE - state.correct,
+        bestStreak: state.bestStreak,
+      });
       router.replace({
         pathname: '/swipe-results',
         params: {
