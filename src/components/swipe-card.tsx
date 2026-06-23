@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Dimensions, StyleSheet, Text, View, ViewStyle } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -11,10 +11,12 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Image } from 'expo-image';
 import * as Haptics from 'expo-haptics';
 
 import type { Profile } from '@/data/profiles';
 import { profileCategories, CATEGORY_META } from '@/data/profile-categories';
+import { profilePhotos } from '@/data/profile-photos';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const SWIPE_THRESHOLD = 80;
@@ -51,38 +53,64 @@ function getInitials(name: string): string {
 }
 
 const CATEGORY_CHIP: Record<string, string> = {
-  Gym:          '🏋️ Gym Rat',
-  Gamer:        '🎮 Gamer',
-  Tradie:       '🔨 Tradie Life',
-  Teacher:      '📚 Educator',
-  Nurse:        '🚑 Frontline',
-  Influencer:   '📸 Content Creator',
-  Entrepreneur: '🚀 Self-Made',
-  FIFO:         '⛏️ Fly-In Fly-Out',
-  Traveller:    '✈️ Digital Nomad',
-  Spiritual:    '🔮 Spiritual',
-  Fitness:      '🏃 Fitness First',
-  Creative:     '🎨 Creative',
-  Corporate:    '💼 Corporate',
-  Crypto:       '₿ Crypto Bro',
-  Outdoors:     '🐴 Outdoors',
+  Gym:            '🏋️ Gym Rat',
+  Gamer:          '🎮 Gamer',
+  Tradie:         '🔨 Tradie Life',
+  Teacher:        '📚 Educator',
+  Nurse:          '🚑 Frontline',
+  Influencer:     '📸 Content Creator',
+  Entrepreneur:   '🚀 Self-Made',
+  FIFO:           '⛏️ Fly-In Fly-Out',
+  Traveller:      '✈️ Digital Nomad',
+  Spiritual:      '🔮 Spiritual',
+  Fitness:        '🏃 Fitness First',
+  Creative:       '🎨 Creative',
+  Corporate:      '💼 Corporate',
+  Crypto:         '₿ Crypto Bro',
+  Outdoors:       '🐴 Outdoors',
+  Paramedic:      '🚑 Paramedic',
+  SingleParent:   '👶 Single Parent',
+  DogPerson:      '🐕 Dog Person',
+  CatPerson:      '🐈 Cat Person',
+  VanLife:        '🚐 Van Life',
+  PublicServant:  '🏛️ Public Servant',
+  FestivalAddict: '🎪 Festival Addict',
+  Vegan:          '🌱 Vegan',
 };
 
 // ── Avatar ────────────────────────────────────────────────────────────────────
 
-function ProfileAvatar({ initials, accentColor }: { initials: string; accentColor: string }) {
+function ProfileAvatar({ initials, accentColor, imageUrl }: {
+  initials: string;
+  accentColor: string;
+  imageUrl?: string;
+}) {
+  const [imgError, setImgError] = useState(false);
   const scale = useSharedValue(0.72);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { scale.value = withSpring(1, { damping: 10, stiffness: 120 }); }, []);
   const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+
+  const showImage = !!imageUrl && !imgError;
 
   return (
     <Animated.View style={animStyle}>
       <View style={[styles.avatarRing, { borderColor: 'rgba(255,255,255,0.32)' }]}>
         <View style={[styles.avatarRingInner, { borderColor: `${accentColor}99` }]}>
           <View style={[styles.avatarCircle, { backgroundColor: accentColor }]}>
-            <View style={styles.avatarDark} />
-            <Text style={styles.avatarInitials}>{initials}</Text>
+            {showImage ? (
+              <Image
+                source={{ uri: imageUrl }}
+                style={styles.avatarImage}
+                contentFit="cover"
+                onError={() => setImgError(true)}
+              />
+            ) : (
+              <>
+                <View style={styles.avatarDark} />
+                <Text style={styles.avatarInitials}>{initials}</Text>
+              </>
+            )}
           </View>
         </View>
       </View>
@@ -99,6 +127,7 @@ function CardContent({ profile }: { profile: Profile }) {
   const icon     = meta?.icon  ?? '•';
   const chip     = CATEGORY_CHIP[category ?? ''];
   const initials = getInitials(profile.name);
+  const imageUrl = profilePhotos[profile.id];
 
   const opacity = useSharedValue(0);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -119,7 +148,7 @@ function CardContent({ profile }: { profile: Profile }) {
           style={StyleSheet.absoluteFill}
           pointerEvents="none"
         />
-        <ProfileAvatar initials={initials} accentColor={accent} />
+        <ProfileAvatar initials={initials} accentColor={accent} imageUrl={imageUrl} />
       </View>
 
       {/* ── Name + Age ───────────────────────────────────────────────────────── */}
@@ -365,6 +394,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
+  },
+  avatarImage: {
+    width: AVATAR_SIZE,
+    height: AVATAR_SIZE,
+    borderRadius: AVATAR_SIZE / 2,
   },
   avatarDark: {
     position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,

@@ -109,4 +109,38 @@ export const profilePhotos: Record<number, string> = {
   98: 'https://randomuser.me/api/portraits/women/73.jpg', // Diana
   99: 'https://randomuser.me/api/portraits/men/76.jpg',   // Lee
   100:'https://randomuser.me/api/portraits/men/77.jpg',   // Sam
+
+  // ─── Pack 2 Reject profiles (101–115) ────────────────────────────────────
+  101: 'https://randomuser.me/api/portraits/women/74.jpg', // Kylie
+  102: 'https://randomuser.me/api/portraits/men/78.jpg',   // Wade
+  103: 'https://randomuser.me/api/portraits/women/75.jpg', // Bonnie
+  104: 'https://randomuser.me/api/portraits/women/76.jpg', // Chantelle
+  105: 'https://randomuser.me/api/portraits/men/79.jpg',   // Dezza
+  106: 'https://randomuser.me/api/portraits/women/77.jpg', // Tamika
+  107: 'https://randomuser.me/api/portraits/men/80.jpg',   // Gregory
+  108: 'https://randomuser.me/api/portraits/men/81.jpg',   // Travis
+  109: 'https://randomuser.me/api/portraits/women/78.jpg', // Simone
+  110: 'https://randomuser.me/api/portraits/men/82.jpg',   // Callum
+  111: 'https://randomuser.me/api/portraits/men/83.jpg',   // Zak
+  112: 'https://randomuser.me/api/portraits/women/79.jpg', // Trish
+  113: 'https://randomuser.me/api/portraits/men/84.jpg',   // Dougie
+  114: 'https://randomuser.me/api/portraits/women/80.jpg', // Celeste
+  115: 'https://randomuser.me/api/portraits/women/81.jpg', // Paige
+
+  // ─── Pack 2 Date profiles (116–130) ──────────────────────────────────────
+  116: 'https://randomuser.me/api/portraits/women/82.jpg', // Peta
+  117: 'https://randomuser.me/api/portraits/women/83.jpg', // Mika
+  118: 'https://randomuser.me/api/portraits/women/84.jpg', // Tess
+  119: 'https://randomuser.me/api/portraits/men/85.jpg',   // Pete
+  120: 'https://randomuser.me/api/portraits/men/86.jpg',   // Nate
+  121: 'https://randomuser.me/api/portraits/women/85.jpg', // Ros
+  122: 'https://randomuser.me/api/portraits/men/87.jpg',   // Dave
+  123: 'https://randomuser.me/api/portraits/women/86.jpg', // Bronte
+  124: 'https://randomuser.me/api/portraits/men/88.jpg',   // Hamish
+  125: 'https://randomuser.me/api/portraits/women/87.jpg', // Clare
+  126: 'https://randomuser.me/api/portraits/men/89.jpg',   // Bo
+  127: 'https://randomuser.me/api/portraits/women/88.jpg', // Lena
+  128: 'https://randomuser.me/api/portraits/men/90.jpg',   // Robbie
+  129: 'https://randomuser.me/api/portraits/women/89.jpg', // Alinta
+  130: 'https://randomuser.me/api/portraits/men/91.jpg',   // Jasper
 };
